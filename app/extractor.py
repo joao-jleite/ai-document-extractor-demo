@@ -2,8 +2,9 @@
 
 - PDFs go as a native `document` block (Claude reads text + layout + images).
 - JPG/PNG/WEBP go as an `image` block (vision), after EXIF-rotation and resizing.
-- `client.messages.parse(output_format=ExtractedDocument)` constrains the answer
-  to our JSON schema and validates it with Pydantic.
+- `client.messages.parse(output_format=WireDocument)` constrains the answer to
+  our JSON schema and validates it with Pydantic; `to_document()` then converts
+  it to `ExtractedDocument` (see app/schema.py for why the two differ).
 - Errors: invalid files are rejected before any API call; timeouts, network
   errors, 429/5xx and invalid/truncated responses are retried ONCE; auth/model
   errors fail fast with a clear message.
@@ -21,7 +22,7 @@ import pydantic
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .config import settings
-from .schema import ExtractedDocument
+from .schema import ExtractedDocument, WireDocument
 
 MAX_IMAGE_EDGE = 2400          # px; larger photos are downscaled before upload
 MAX_IMAGE_BYTES = 4_500_000    # API limit is 5 MB per image
@@ -47,7 +48,8 @@ The input may be a clean PDF or a phone photo of a printed page.
 Rules:
 - Transcribe what is PRINTED. Never correct arithmetic, never compute a missing value, never \
 "fix" a total that looks wrong - downstream validation needs the document exactly as printed.
-- If a field is not printed or not legible, return null (and mention it in extraction_notes).
+- If a field is not printed or not legible, return an empty string for text fields and null \
+for numbers (and mention it in extraction_notes when it should have been there).
 - Numbers: convert locale formats to plain numbers. "1.234,56" -> 1234.56 (pt/es). \
 Chilean pesos have no decimals: "1.234.567" -> 1234567.
 - Dates: YYYY-MM-DD.
@@ -169,16 +171,16 @@ def extract(data: bytes, filename: str = "upload", *, model: str | None = None) 
                 max_tokens=16000,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": _content_blocks(prepared)}],
-                output_format=ExtractedDocument,
+                output_format=WireDocument,
                 output_config={"effort": settings.effort},
             )
             if response.stop_reason == "refusal":
                 raise ExtractionError("The model declined to process this document.", retryable=True)
             if response.stop_reason == "max_tokens":
                 raise ExtractionError("The model response was truncated (max_tokens).", retryable=True)
-            parsed = response.parsed_output
-            if parsed is None:
+            if response.parsed_output is None:
                 raise ExtractionError("The model returned no structured output.", retryable=True)
+            parsed = response.parsed_output.to_document()  # may raise ValidationError -> retried
             usage = {
                 "input_tokens": response.usage.input_tokens,
                 "output_tokens": response.usage.output_tokens,

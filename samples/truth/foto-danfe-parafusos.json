@@ -10,7 +10,7 @@
   "currency": "BRL",
   "supplier": {
     "name": "PARAFUSOS FICTÍCIOS DO BRASIL LTDA",
-    "tax_id": "23.456.789/0001-95",
+    "tax_id": "11.444.777/0001-61",
     "tax_id_type": "CNPJ",
     "country": "BR"
   },
@@ -65,5 +65,5 @@
   "other_charges": 0.0,
   "tax_added": 0.0,
   "grand_total": 2150.5,
-  "nfe_access_key": "31260923456789000195550020000187341503188424"
+  "nfe_access_key": "31260911444777000161550020000187341503188423"
 }

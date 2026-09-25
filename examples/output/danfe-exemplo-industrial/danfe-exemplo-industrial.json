@@ -1,0 +1,196 @@
+{
+  "demo": true,
+  "notice": "DEMO - all sample documents and outputs are fictitious.",
+  "run_id": "20260925-134814-05f9f8",
+  "mode": "live",
+  "source": {
+    "filename": "danfe-exemplo-industrial.pdf",
+    "media_type": "application/pdf",
+    "size_bytes": 6963,
+    "sha256": "420c31b1e22b2a790df9ef58a04be90b81c05a2ce47f9ea1ef1eba20c00145cc"
+  },
+  "model": "claude-sonnet-5",
+  "attempts": 1,
+  "usage": {
+    "input_tokens": 7617,
+    "output_tokens": 1035
+  },
+  "timing": {
+    "extract_seconds": 11.33,
+    "total_seconds": 11.5
+  },
+  "generated_at": "2026-09-25 13:48:26 -0300",
+  "document": {
+    "document_type": "nfe_danfe",
+    "document_language": "pt",
+    "document_number": "000.004.217",
+    "series": "001",
+    "issue_date": "2026-09-15",
+    "due_or_delivery_date": "2026-10-15",
+    "currency": "BRL",
+    "supplier": {
+      "name": "EXEMPLO INDUSTRIAL LTDA",
+      "tax_id": "11.222.333/0001-81",
+      "tax_id_type": "CNPJ",
+      "country": "BR",
+      "address": "RUA FICTÍCIA DAS INDÚSTRIAS, 100, DISTRITO INDUSTRIAL - CEP 13000-000, CAMPINAS - SP"
+    },
+    "buyer": {
+      "name": "FICTÍCIA MINERAÇÃO E MÁQUINAS S.A.",
+      "tax_id": "12.ABC.345/01DE-35",
+      "tax_id_type": "CNPJ",
+      "country": "BR",
+      "address": "AV. DEMONSTRAÇÃO, 2500, CENTRO, CEP 30100-000, BELO HORIZONTE - MG"
+    },
+    "items": [
+      {
+        "line_number": null,
+        "code": "EI-1001",
+        "description": "Rolamento rígido de esferas 6205-2RS",
+        "quantity": 40.0,
+        "unit": "PC",
+        "unit_price": 38.5,
+        "line_total": 1540.0
+      },
+      {
+        "line_number": null,
+        "code": "EI-2040",
+        "description": "Correia em V perfil B-54",
+        "quantity": 25.0,
+        "unit": "PC",
+        "unit_price": 64.9,
+        "line_total": 1622.5
+      },
+      {
+        "line_number": null,
+        "code": "EI-3310",
+        "description": "Filtro de ar industrial 610x610x292 mm",
+        "quantity": 12.0,
+        "unit": "UN",
+        "unit_price": 289.0,
+        "line_total": 3468.0
+      },
+      {
+        "line_number": null,
+        "code": "EI-4102",
+        "description": "Graxa de lítio EP2 - balde 20 kg",
+        "quantity": 6.0,
+        "unit": "BD",
+        "unit_price": 412.75,
+        "line_total": 2476.5
+      },
+      {
+        "line_number": null,
+        "code": "EI-5007",
+        "description": "Parafuso sextavado M16x60 zincado (cx 50)",
+        "quantity": 10.0,
+        "unit": "CX",
+        "unit_price": 97.3,
+        "line_total": 973.0
+      }
+    ],
+    "items_subtotal": 10080.0,
+    "discount": 180.0,
+    "freight": 350.0,
+    "insurance": 0.0,
+    "other_charges": 0.0,
+    "tax_added": 250.4,
+    "grand_total": 10500.4,
+    "payment_terms": "A PRAZO - 30 DIAS",
+    "nfe_access_key": "35260911222333000181550010000042171739201841",
+    "notes": "DOCUMENTO FICTÍCIO GERADO PARA DEMONSTRAÇÃO - SEM VALOR FISCAL. DEMO - dados fictícios. Pedido do cliente: PC-217/2026. Tributos aproximados conforme Lei 12.741/2012: R$ 1.460,00.",
+    "extraction_notes": [
+      "Buyer CNPJ printed as '12.ABC.345/01DE-35' contains letters, unusual but transcribed as printed."
+    ]
+  },
+  "validation": {
+    "status": "ok",
+    "counts": {
+      "ok": 9,
+      "warning": 0,
+      "error": 0,
+      "info": 1
+    },
+    "checks": [
+      {
+        "code": "required_fields",
+        "status": "ok",
+        "title": "Required fields",
+        "detail": "All 8 required fields are present.",
+        "field": null
+      },
+      {
+        "code": "currency",
+        "status": "ok",
+        "title": "Currency",
+        "detail": "BRL is a valid ISO 4217 currency.",
+        "field": null
+      },
+      {
+        "code": "supplier_tax_id",
+        "status": "ok",
+        "title": "Supplier CNPJ",
+        "detail": "11.222.333/0001-81: check digit is valid.",
+        "field": null
+      },
+      {
+        "code": "buyer_tax_id",
+        "status": "ok",
+        "title": "Buyer CNPJ",
+        "detail": "12.ABC.345/01DE-35: check digit is valid.",
+        "field": null
+      },
+      {
+        "code": "dates",
+        "status": "ok",
+        "title": "Dates",
+        "detail": "Issue date 2026-09-15, due/delivery 2026-10-15: consistent.",
+        "field": null
+      },
+      {
+        "code": "line_math",
+        "status": "ok",
+        "title": "Line totals",
+        "detail": "quantity x unit price matches on all 5 lines.",
+        "field": null
+      },
+      {
+        "code": "items_vs_subtotal",
+        "status": "ok",
+        "title": "Items vs subtotal",
+        "detail": "Sum of 5 lines = printed subtotal (10,080.00 BRL).",
+        "field": null
+      },
+      {
+        "code": "grand_total",
+        "status": "ok",
+        "title": "Grand total",
+        "detail": "subtotal 10,080.00 BRL - discount 180.00 BRL + freight 350.00 BRL + taxes 250.40 BRL = printed total 10,500.40 BRL.",
+        "field": null
+      },
+      {
+        "code": "nfe_key",
+        "status": "ok",
+        "title": "NF-e access key",
+        "detail": "Check digit valid; CNPJ, year/month and number match the document.",
+        "field": null
+      },
+      {
+        "code": "model_note",
+        "status": "info",
+        "title": "Reader note",
+        "detail": "Buyer CNPJ printed as '12.ABC.345/01DE-35' contains letters, unusual but transcribed as printed.",
+        "field": null
+      }
+    ],
+    "computed": {
+      "items_sum": 10080.0,
+      "expected_total": 10500.4
+    }
+  },
+  "files": {
+    "xlsx": "danfe-exemplo-industrial.xlsx",
+    "pdf": "danfe-exemplo-industrial.report.pdf",
+    "json": "danfe-exemplo-industrial.json"
+  }
+}

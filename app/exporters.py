@@ -140,8 +140,10 @@ def write_xlsx(path: Path, doc: ExtractedDocument, report: ValidationReport, met
     wb = Workbook()
     cur = doc.currency
     money_fmt = excel_money_format(cur)
+    # Offline runs did not call Claude: say "Extraction: ..." instead of naming a model.
+    who = "Extraction" if meta.get("mode") == "offline" else "Model"
     subtitle = (
-        f"Source: {meta.get('filename')}  |  Model: {meta.get('model')}  |  "
+        f"Source: {meta.get('filename')}  |  {who}: {meta.get('model')}  |  "
         f"Generated: {meta.get('generated_at')}"
     )
 
@@ -320,10 +322,14 @@ def write_pdf(path: Path, doc: ExtractedDocument, report: ValidationReport, meta
     story = []
     title = f"{DOC_TYPE_LABEL.get(doc.document_type, 'Document')} {doc.document_number or ''}".strip()
     story += [Paragraph(title, h1), Spacer(1, 2 * mm)]
-    story.append(P(
-        f"Source file: {meta.get('filename')}  |  Model: {meta.get('model')}  |  "
-        f"Processed: {meta.get('generated_at')}  |  Extraction time: {meta.get('seconds')} s  |  "
-        f"Attempts: {meta.get('attempts')}", small))
+    if meta.get("mode") == "offline":  # no model call: no model name, time or attempts to report
+        run_line = (f"Source file: {meta.get('filename')}  |  Extraction: {meta.get('model')}  |  "
+                    f"Processed: {meta.get('generated_at')}")
+    else:
+        run_line = (f"Source file: {meta.get('filename')}  |  Model: {meta.get('model')}  |  "
+                    f"Processed: {meta.get('generated_at')}  |  Extraction time: {meta.get('seconds')} s  |  "
+                    f"Attempts: {meta.get('attempts')}")
+    story.append(P(run_line, small))
     story.append(Spacer(1, 4 * mm))
 
     # Status box

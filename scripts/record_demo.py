@@ -1,6 +1,7 @@
 """Record the demo video and take the README screenshots with Playwright.
 
-    python scripts/record_demo.py                 # live: real Claude calls
+    python scripts/record_demo.py                   # live: real Claude calls
+    python scripts/record_demo.py --mode offline    # no API call: sample answer keys, labelled in the UI
     python scripts/record_demo.py --out recordings
 
 Starts the FastAPI app on a free port, drives Chromium (new headless mode, which
@@ -103,6 +104,7 @@ def record(base: str, out: Path, sample: Path) -> None:
 
         page.goto(base)
         page.wait_for_selector(".sample")
+        page.wait_for_function("!document.querySelector('#chipModel').textContent.includes('…')")  # mode known
         page.mouse.move(640, 420)
         mark("open")
         page.wait_for_timeout(1300)
@@ -178,6 +180,7 @@ def screenshots(base: str, out: Path) -> None:
         def run_sample(name: str) -> None:
             page.goto(base)
             page.wait_for_selector(".sample")
+            page.wait_for_function("!document.querySelector('#chipModel').textContent.includes('…')")
             page.click(f"button.sample[data-name='{name}']")
             page.wait_for_selector("#stResult.show", timeout=240_000)
             page.wait_for_timeout(500)
@@ -202,10 +205,14 @@ def main() -> int:
     ap.add_argument("--sample", type=Path, default=ROOT / "samples" / "foto-danfe-parafusos.jpg")
     ap.add_argument("--skip-video", action="store_true")
     ap.add_argument("--skip-screenshots", action="store_true")
+    ap.add_argument("--mode", choices=["live", "offline", "replay"], default=None,
+                    help="EXTRACTOR_MODE for the recorded server (default: from the environment / .env)")
     args = ap.parse_args()
 
     port = free_port()
     env = {**os.environ, "RUNS_DIR": str(args.out / "runs")}
+    if args.mode:
+        env["EXTRACTOR_MODE"] = args.mode
     server = start_server(port, env)
     base = f"http://127.0.0.1:{port}/"
     try:

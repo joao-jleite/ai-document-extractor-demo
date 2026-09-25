@@ -36,7 +36,7 @@ def test_cnpj(value, ok):
 
 
 @pytest.mark.parametrize("value,ok", [
-    ("76.543.210-3", True), ("76543210-3", True), ("76.543.210-4", False),
+    ("11.111.111-1", True), ("11111111-1", True), ("11.111.111-2", False),
     ("77.123.456-9", True), ("96.555.444-0", True), ("12.345.678-5", True), ("12.345.678-K", False),
 ])
 def test_rut(value, ok):
@@ -81,7 +81,7 @@ def test_photo_sample_flags_the_deliberate_typo():
 
 def test_missing_and_invalid_fields_are_errors():
     doc = load_truth("orden-compra-andina").model_copy(deep=True)
-    doc.buyer.tax_id = "76.543.210-9"
+    doc.buyer.tax_id = "11.111.111-9"
     doc.grand_total = None
     doc.issue_date = "2026-02-31"
     report = validate_document(doc, today=TODAY)

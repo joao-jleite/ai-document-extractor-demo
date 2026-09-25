@@ -1,0 +1,180 @@
+{
+  "demo": true,
+  "notice": "DEMO - all sample documents and outputs are fictitious.",
+  "run_id": "20260925-134837-677c3d",
+  "mode": "live",
+  "source": {
+    "filename": "orden-compra-andina.pdf",
+    "media_type": "application/pdf",
+    "size_bytes": 4178,
+    "sha256": "c3b1271d39aac7fabc981249866523366d73b63ec473b63d3d93ff4222c587fb"
+  },
+  "model": "claude-sonnet-5",
+  "attempts": 1,
+  "usage": {
+    "input_tokens": 6293,
+    "output_tokens": 879
+  },
+  "timing": {
+    "extract_seconds": 9.91,
+    "total_seconds": 9.99
+  },
+  "generated_at": "2026-09-25 13:48:47 -0300",
+  "document": {
+    "document_type": "purchase_order",
+    "document_language": "es",
+    "document_number": "OC-2026-0917",
+    "series": null,
+    "issue_date": "2026-09-17",
+    "due_or_delivery_date": "2026-11-02",
+    "currency": "USD",
+    "supplier": {
+      "name": "Exemplo Industrial Ltda",
+      "tax_id": "11.222.333/0001-81",
+      "tax_id_type": "CNPJ",
+      "country": "BR",
+      "address": "Rua Fictícia das Indústrias, 100 - Distrito Industrial, Campinas - SP, Brasil"
+    },
+    "buyer": {
+      "name": "COMERCIAL ANDINA EJEMPLO SpA",
+      "tax_id": "11.111.111-1",
+      "tax_id_type": "RUT",
+      "country": "CL",
+      "address": "Av. Ejemplo 1234, Of. 501, Las Condes, Santiago, Chile"
+    },
+    "items": [
+      {
+        "line_number": 1,
+        "code": "EI-7801",
+        "description": "Rodamiento de rodillos esféricos 22218 EK",
+        "quantity": 8.0,
+        "unit": "UN",
+        "unit_price": 186.4,
+        "line_total": 1491.2
+      },
+      {
+        "line_number": 2,
+        "code": "EI-7815",
+        "description": "Soporte de pie SNL 518-615",
+        "quantity": 8.0,
+        "unit": "UN",
+        "unit_price": 142.75,
+        "line_total": 1142.0
+      },
+      {
+        "line_number": 3,
+        "code": "EI-3310",
+        "description": "Filtro de aire industrial 610x610x292 mm",
+        "quantity": 24.0,
+        "unit": "UN",
+        "unit_price": 61.9,
+        "line_total": 1485.6
+      },
+      {
+        "line_number": 4,
+        "code": "EI-6620",
+        "description": "Acoplamiento elástico tipo grilla 1060T",
+        "quantity": 4.0,
+        "unit": "UN",
+        "unit_price": 318.0,
+        "line_total": 1272.0
+      },
+      {
+        "line_number": 5,
+        "code": "EI-9050",
+        "description": "Kit de sellos para ventilador axial",
+        "quantity": 10.0,
+        "unit": "KIT",
+        "unit_price": 54.35,
+        "line_total": 543.5
+      }
+    ],
+    "items_subtotal": 5934.3,
+    "discount": null,
+    "freight": 420.0,
+    "insurance": 38.6,
+    "other_charges": null,
+    "tax_added": null,
+    "grand_total": 6392.9,
+    "payment_terms": "30% anticipo / 70% contra copia de B/L",
+    "nfe_access_key": null,
+    "notes": "Adjuntar factura comercial, packing list y certificado de origen. Indicar el número de esta OC en todos los documentos. Documento de demostración: empresas y datos ficticios. Incoterm: CIF San Antonio (Incoterms 2020). Lugar de entrega: Bodega central, Quilicura, Santiago",
+    "extraction_notes": []
+  },
+  "validation": {
+    "status": "ok",
+    "counts": {
+      "ok": 8,
+      "warning": 0,
+      "error": 0,
+      "info": 0
+    },
+    "checks": [
+      {
+        "code": "required_fields",
+        "status": "ok",
+        "title": "Required fields",
+        "detail": "All 8 required fields are present.",
+        "field": null
+      },
+      {
+        "code": "currency",
+        "status": "ok",
+        "title": "Currency",
+        "detail": "USD is a valid ISO 4217 currency.",
+        "field": null
+      },
+      {
+        "code": "supplier_tax_id",
+        "status": "ok",
+        "title": "Supplier CNPJ",
+        "detail": "11.222.333/0001-81: check digit is valid.",
+        "field": null
+      },
+      {
+        "code": "buyer_tax_id",
+        "status": "ok",
+        "title": "Buyer RUT",
+        "detail": "11.111.111-1: check digit is valid.",
+        "field": null
+      },
+      {
+        "code": "dates",
+        "status": "ok",
+        "title": "Dates",
+        "detail": "Issue date 2026-09-17, due/delivery 2026-11-02: consistent.",
+        "field": null
+      },
+      {
+        "code": "line_math",
+        "status": "ok",
+        "title": "Line totals",
+        "detail": "quantity x unit price matches on all 5 lines.",
+        "field": null
+      },
+      {
+        "code": "items_vs_subtotal",
+        "status": "ok",
+        "title": "Items vs subtotal",
+        "detail": "Sum of 5 lines = printed subtotal (5,934.30 USD).",
+        "field": null
+      },
+      {
+        "code": "grand_total",
+        "status": "ok",
+        "title": "Grand total",
+        "detail": "subtotal 5,934.30 USD + freight 420.00 USD + insurance 38.60 USD = printed total 6,392.90 USD.",
+        "field": null
+      }
+    ],
+    "computed": {
+      "items_sum": 5934.3,
+      "expected_total": 6392.9
+    }
+  },
+  "files": {
+    "xlsx": "orden-compra-andina.xlsx",
+    "pdf": "orden-compra-andina.report.pdf",
+    "json": "orden-compra-andina.json"
+  }
+}

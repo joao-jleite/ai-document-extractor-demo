@@ -10,7 +10,9 @@ Creates:
   samples/truth/<name>.json                 What a perfect extraction should return
 
 Every company, tax ID, key and number here is fictitious. The CNPJ 11.222.333/0001-81
-is the classic documentation example; the others were generated with valid check digits.
+is the classic documentation example, 11.444.777/0001-61 and the RUT 11.111.111-1 are
+textbook examples too; the alphanumeric CNPJ 12.ABC.345/01DE-35 is the example format
+from the 2026 CNPJ change. Any match with a real registration is coincidental.
 """
 
 from __future__ import annotations
@@ -119,7 +121,7 @@ DANFE_PHOTO = {
     "stem": "foto-danfe-parafusos",
     "emit": {
         "name": "PARAFUSOS FICTÍCIOS DO BRASIL LTDA",
-        "cnpj": "23.456.789/0001-95",
+        "cnpj": "11.444.777/0001-61",  # textbook example CNPJ (valid check digits)
         "ie": "062.000.000.0099",
         "street": "RUA EXEMPLO DOS METAIS, 45",
         "district": "CIDADE INDUSTRIAL",
@@ -152,7 +154,7 @@ PO = {
     "issue": "2026-09-17", "delivery": "2026-11-02",
     "buyer": {
         "name": "COMERCIAL ANDINA EJEMPLO SpA",
-        "rut": "76.543.210-3",
+        "rut": "11.111.111-1",  # textbook example RUT (valid check digit)
         "giro": "Distribución de repuestos industriales",
         "address": "Av. Ejemplo 1234, Of. 501, Las Condes, Santiago, Chile",
         "email": "compras@andina-ejemplo.example",

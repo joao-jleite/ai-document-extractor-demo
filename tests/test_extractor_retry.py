@@ -10,7 +10,7 @@ import pydantic
 import pytest
 
 from app import extractor
-from app.schema import ExtractedDocument
+from app.schema import ExtractedDocument, WireDocument
 
 ROOT = Path(__file__).resolve().parent.parent
 PDF = (ROOT / "samples" / "orden-compra-andina.pdf").read_bytes()
@@ -20,7 +20,7 @@ REQ = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
 
 
 def ok_response():
-    return SimpleNamespace(stop_reason="end_turn", parsed_output=DOC, model="fake-model",
+    return SimpleNamespace(stop_reason="end_turn", parsed_output=WireDocument.from_document(DOC), model="fake-model",
                            usage=SimpleNamespace(input_tokens=10, output_tokens=5))
 
 
@@ -34,7 +34,7 @@ class FakeClient:
         self.calls += 1
         # The request must carry the document block and the structured-output schema
         assert kwargs["messages"][0]["content"][0]["type"] == "document"
-        assert kwargs["output_format"] is ExtractedDocument
+        assert kwargs["output_format"] is WireDocument
         outcome = self.outcomes.pop(0)
         if isinstance(outcome, Exception):
             raise outcome

@@ -2,7 +2,8 @@
 
     python extract.py samples/foto-danfe-parafusos.jpg
     python extract.py invoice.pdf --out results/
-    python extract.py samples/orden-compra-andina.pdf --replay   # no API key needed
+    python extract.py samples/foto-danfe-parafusos.jpg --offline  # no API key: sample answer key, no Claude call
+    python extract.py samples/orden-compra-andina.pdf --replay    # results saved by a live run_samples.py
 
 Exit codes: 0 = all checks passed, 1 = needs review, 2 = could not process.
 """
@@ -23,8 +24,13 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Extract and validate data from an NF-e/DANFE or purchase order.")
     ap.add_argument("file", type=Path, help="PDF, JPG or PNG")
     ap.add_argument("--out", type=Path, default=None, help="output folder (default: runs/<timestamp>)")
-    ap.add_argument("--replay", action="store_true", help="use saved results for the bundled samples (no API call)")
+    modes = ap.add_mutually_exclusive_group()
+    modes.add_argument("--offline", action="store_true",
+                       help="bundled samples only: use their hand-written answer key instead of calling Claude")
+    modes.add_argument("--replay", action="store_true",
+                       help="bundled samples only: reuse results saved by a live run of scripts/run_samples.py")
     args = ap.parse_args(argv)
+    mode = "offline" if args.offline else "replay" if args.replay else None  # None = EXTRACTOR_MODE
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles: print accents safely
@@ -32,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: file not found: {args.file}", file=sys.stderr)
         return 2
     try:
-        result = process(args.file.read_bytes(), args.file.name, args.out, mode="replay" if args.replay else None)
+        result = process(args.file.read_bytes(), args.file.name, args.out, mode=mode)
     except (InvalidFileError, ExtractionError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -43,7 +49,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  supplier : {d['supplier'].get('name')}  [{d['supplier'].get('tax_id')}]")
     print(f"  buyer    : {d['buyer'].get('name')}  [{d['buyer'].get('tax_id')}]")
     print(f"  items    : {len(d['items'])}   subtotal {d.get('items_subtotal')}   total {d.get('grand_total')} {cur}")
-    print(f"  model    : {result['model']}  ({result['timing']['extract_seconds']} s, {result['attempts']} attempt(s))")
+    if result["mode"] == "live":
+        print(f"  model    : {result['model']}  ({result['timing']['extract_seconds']} s, {result['attempts']} attempt(s))")
+    else:
+        print(f"  source   : {result['model']}")
     print("\nValidation:")
     for c in v["checks"]:
         print(f"  {ICON[c['status']]} {c['title']}: {c['detail']}")

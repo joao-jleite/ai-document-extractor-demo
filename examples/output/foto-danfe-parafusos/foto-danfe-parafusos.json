@@ -1,0 +1,195 @@
+{
+  "demo": true,
+  "notice": "DEMO - all sample documents and outputs are fictitious.",
+  "run_id": "20260925-134826-d86327",
+  "mode": "live",
+  "source": {
+    "filename": "foto-danfe-parafusos.jpg",
+    "media_type": "image/jpeg",
+    "size_bytes": 577329,
+    "sha256": "e2d9fd2331e2f7e463fbf50b40f60572cb53f80fd28dfec759247fe7355ba244"
+  },
+  "model": "claude-sonnet-5",
+  "attempts": 1,
+  "usage": {
+    "input_tokens": 8566,
+    "output_tokens": 1004
+  },
+  "timing": {
+    "extract_seconds": 11.37,
+    "total_seconds": 11.52
+  },
+  "generated_at": "2026-09-25 13:48:37 -0300",
+  "document": {
+    "document_type": "nfe_danfe",
+    "document_language": "pt",
+    "document_number": "000.018.734",
+    "series": "002",
+    "issue_date": "2026-09-18",
+    "due_or_delivery_date": "2026-10-18",
+    "currency": "BRL",
+    "supplier": {
+      "name": "PARAFUSOS FICTÍCIOS DO BRASIL LTDA",
+      "tax_id": "11.444.777/0001-61",
+      "tax_id_type": "CNPJ",
+      "country": "BR",
+      "address": "RUA EXEMPLO DOS METAIS, 45, CIDADE INDUSTRIAL - CEP 32000-000, CONTAGEM - MG"
+    },
+    "buyer": {
+      "name": "EXEMPLO INDUSTRIAL LTDA",
+      "tax_id": "11.222.333/0001-81",
+      "tax_id_type": "CNPJ",
+      "country": "BR",
+      "address": "RUA FICTÍCIA DAS INDÚSTRIAS, 100, DISTRITO INDUSTRIAL, CAMPINAS - SP, CEP 13000-000"
+    },
+    "items": [
+      {
+        "line_number": null,
+        "code": "PF-0110",
+        "description": "Parafuso Allen M8x25 inox A2 (cx 100)",
+        "quantity": 20.0,
+        "unit": "CX",
+        "unit_price": 42.6,
+        "line_total": 852.0
+      },
+      {
+        "line_number": null,
+        "code": "PF-0225",
+        "description": "Porca sextavada M12 zincada (cx 100)",
+        "quantity": 15.0,
+        "unit": "CX",
+        "unit_price": 23.4,
+        "line_total": 351.0
+      },
+      {
+        "line_number": null,
+        "code": "PF-0340",
+        "description": "Arruela lisa 1/2 pol. galvanizada (cx 200)",
+        "quantity": 25.0,
+        "unit": "CX",
+        "unit_price": 18.9,
+        "line_total": 427.5
+      },
+      {
+        "line_number": null,
+        "code": "PF-0418",
+        "description": "Barra roscada M10 x 1 m aço carbono",
+        "quantity": 40.0,
+        "unit": "PC",
+        "unit_price": 9.75,
+        "line_total": 390.0
+      }
+    ],
+    "items_subtotal": 2065.5,
+    "discount": 0.0,
+    "freight": 85.0,
+    "insurance": 0.0,
+    "other_charges": 0.0,
+    "tax_added": 0.0,
+    "grand_total": 2150.5,
+    "payment_terms": "A PRAZO - 30 DIAS",
+    "nfe_access_key": "31260911444777000161550020000187341503188423",
+    "notes": "DOCUMENTO FICTÍCIO GERADO PARA DEMONSTRAÇÃO - SEM VALOR FISCAL. DEMO - dados fictícios. Pedido do cliente: PC-734/2026. Tributos aproximados conforme Lei 12.741/2012: R$ 247,86.",
+    "extraction_notes": [
+      "Watermark 'DEMO - dados fictícios' present but ignored as instructed.",
+      "V. TOTAL PRODUTOS (2.065,50) + FRETE (85,00) = 2.150,50 matches V. TOTAL DA NOTA printed."
+    ]
+  },
+  "validation": {
+    "status": "review",
+    "counts": {
+      "ok": 7,
+      "warning": 2,
+      "error": 0,
+      "info": 2
+    },
+    "checks": [
+      {
+        "code": "required_fields",
+        "status": "ok",
+        "title": "Required fields",
+        "detail": "All 8 required fields are present.",
+        "field": null
+      },
+      {
+        "code": "currency",
+        "status": "ok",
+        "title": "Currency",
+        "detail": "BRL is a valid ISO 4217 currency.",
+        "field": null
+      },
+      {
+        "code": "supplier_tax_id",
+        "status": "ok",
+        "title": "Supplier CNPJ",
+        "detail": "11.444.777/0001-61: check digit is valid.",
+        "field": null
+      },
+      {
+        "code": "buyer_tax_id",
+        "status": "ok",
+        "title": "Buyer CNPJ",
+        "detail": "11.222.333/0001-81: check digit is valid.",
+        "field": null
+      },
+      {
+        "code": "dates",
+        "status": "ok",
+        "title": "Dates",
+        "detail": "Issue date 2026-09-18, due/delivery 2026-10-18: consistent.",
+        "field": null
+      },
+      {
+        "code": "line_math",
+        "status": "warning",
+        "title": "Line totals",
+        "detail": "Line 3: 25 × 18.90 = 472.50 BRL, but the document prints 427.50 BRL.",
+        "field": "items"
+      },
+      {
+        "code": "items_vs_subtotal",
+        "status": "warning",
+        "title": "Items vs subtotal",
+        "detail": "Sum of line totals is 2,020.50 BRL but the printed subtotal is 2,065.50 BRL (difference -45.00 BRL).",
+        "field": "items_subtotal"
+      },
+      {
+        "code": "grand_total",
+        "status": "ok",
+        "title": "Grand total",
+        "detail": "subtotal 2,065.50 BRL + freight 85.00 BRL = printed total 2,150.50 BRL.",
+        "field": null
+      },
+      {
+        "code": "nfe_key",
+        "status": "ok",
+        "title": "NF-e access key",
+        "detail": "Check digit valid; CNPJ, year/month and number match the document.",
+        "field": null
+      },
+      {
+        "code": "model_note",
+        "status": "info",
+        "title": "Reader note",
+        "detail": "Watermark 'DEMO - dados fictícios' present but ignored as instructed.",
+        "field": null
+      },
+      {
+        "code": "model_note",
+        "status": "info",
+        "title": "Reader note",
+        "detail": "V. TOTAL PRODUTOS (2.065,50) + FRETE (85,00) = 2.150,50 matches V. TOTAL DA NOTA printed.",
+        "field": null
+      }
+    ],
+    "computed": {
+      "items_sum": 2020.5,
+      "expected_total": 2150.5
+    }
+  },
+  "files": {
+    "xlsx": "foto-danfe-parafusos.xlsx",
+    "pdf": "foto-danfe-parafusos.report.pdf",
+    "json": "foto-danfe-parafusos.json"
+  }
+}

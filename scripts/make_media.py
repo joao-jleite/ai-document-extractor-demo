@@ -1,4 +1,4 @@
-"""Turn recordings/demo.webm into docs/demo.gif (<= 5 MB) and docs/demo.mp4 (<= 4 MB).
+"""Turn recordings/demo.webm into docs/demo.gif (<= 4.9 MB) and docs/demo.mp4 (<= 4 MB).
 
     python scripts/make_media.py --src recordings --dest docs
 
@@ -209,13 +209,19 @@ def main() -> int:
             break
     print(f"mp4  {mp4.stat().st_size / 1e6:.2f} MB  {duration(mp4):.1f} s  (crf {crf})")
 
-    # GIF: 960x600, two passes over stabilized raw frames (palette, then encode)
+    # GIF: two passes over stabilized raw frames (palette, then encode).
+    # Try progressively cheaper settings until it fits; fail loudly if none does.
     gif = args.dest / "demo.gif"
-    for fps, colors in ((12, 192), (10, 160), (10, 128), (9, 128), (8, 112)):
-        write_gif(lambda: stabilize(edited_frames(video, segs, fps, (960, 600))), gif, fps, colors)
-        if gif.stat().st_size <= 4_900_000:  # stay safely under 5 MB
+    limit = 4_900_000  # bytes; stay safely under GitHub's comfortable 5 MB
+    attempts = ((12, 192, (960, 600)), (10, 160, (960, 600)), (10, 128, (960, 600)), (9, 128, (960, 600)),
+                (8, 112, (960, 600)), (8, 96, (880, 550)), (7, 96, (880, 550)), (6, 80, (800, 500)))
+    for fps, colors, size in attempts:
+        write_gif(lambda: stabilize(edited_frames(video, segs, fps, size)), gif, fps, colors)
+        print(f"gif  {gif.stat().st_size / 1e6:.2f} MB  {fps} fps  {colors} colors  {size[0]}x{size[1]}")
+        if gif.stat().st_size <= limit:
             break
-    print(f"gif  {gif.stat().st_size / 1e6:.2f} MB  {fps} fps  {colors} colors")
+    else:
+        raise SystemExit(f"GIF still larger than {limit / 1e6:.1f} MB with the cheapest settings")
     return 0
 
 

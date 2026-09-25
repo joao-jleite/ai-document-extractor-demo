@@ -22,7 +22,7 @@ class Party(BaseModel):
     tax_id: str | None = Field(
         None,
         description="Tax ID exactly as printed, keeping punctuation "
-        "(e.g. '11.222.333/0001-81', '76.543.210-3'). Null if not printed.",
+        "(e.g. a CNPJ as 'NN.NNN.NNN/NNNN-NN', a RUT as 'NN.NNN.NNN-D'). Null if not printed.",
     )
     tax_id_type: TaxIdType | None = Field(
         None,
@@ -100,7 +100,12 @@ class ExtractedDocument(BaseModel):
     )
     payment_terms: str | None = Field(None, description="Payment terms / condicion de pago.")
     nfe_access_key: str | None = Field(
-        None, description="NF-e 'chave de acesso': the 44 digits, no spaces. Null if not an NF-e."
+        None,
+        # The first live run asked for "44 digits, no spaces" and on both DANFEs the key came
+        # back 1-2 digits short (lost in long runs of repeated digits). Copying the printed
+        # 4-digit groups fixed it; the validator below removes the spaces.
+        description="NF-e 'chave de acesso' (44 digits) copied exactly as printed, group by group, "
+        "KEEPING the spaces between the 4-digit groups. Null if not an NF-e.",
     )
     notes: str | None = Field(None, description="Relevant free-text notes printed on the document.")
     extraction_notes: list[str] = Field(
@@ -119,6 +124,114 @@ class ExtractedDocument(BaseModel):
     def _digits_only(cls, v: str | None) -> str | None:
         # The model is told to drop spaces, but be tolerant anyway.
         return "".join(ch for ch in v if ch.isdigit()) if v else v
+
+
+# ---------------------------------------------------------------------------
+# Wire schema: the JSON schema Claude actually fills (structured output).
+#
+# The API compiles the schema into a grammar and rejects it with 400 "Schema is
+# too complex" when it has too many optional fields and nullable unions (the
+# first version, ExtractedDocument sent as-is, had 28 optional fields and 27
+# `X | None` unions and was rejected). So the wire models make EVERY field
+# required, use "" instead of null for text that is not printed, and keep null
+# only for numbers, where 0 and "not printed" must stay different.
+# to_document() turns the answer into the ExtractedDocument used everywhere else.
+# ---------------------------------------------------------------------------
+
+NOT_PRINTED = "NOT_PRINTED"
+_BLANK = " Empty string if not printed."
+
+
+def _desc(model: type[BaseModel], name: str, extra: str = "") -> str:
+    """Reuse the description of the matching ExtractedDocument field (one source of truth)."""
+    return (model.model_fields[name].description or "") + extra
+
+
+def _none_if_blank(value):
+    return None if isinstance(value, str) and not value.strip() else value
+
+
+class WireParty(BaseModel):
+    name: str = Field(description=_desc(Party, "name", _BLANK))
+    tax_id: str = Field(description=_desc(Party, "tax_id").replace("Null", "Empty string"))
+    tax_id_type: Literal["CNPJ", "CPF", "RUT", "OTHER", "NOT_PRINTED"] = Field(
+        description=_desc(Party, "tax_id_type", " NOT_PRINTED if there is no tax ID.")
+    )
+    country: str = Field(description=_desc(Party, "country", _BLANK))
+    address: str = Field(description=_desc(Party, "address", _BLANK))
+
+    def to_party(self) -> Party:
+        data = {k: _none_if_blank(v) for k, v in self.model_dump().items()}
+        if data["tax_id_type"] == NOT_PRINTED:
+            data["tax_id_type"] = None
+        return Party.model_validate(data)
+
+
+class WireLineItem(BaseModel):
+    line_number: int | None = Field(description=_desc(LineItem, "line_number", " Null if not printed."))
+    code: str = Field(description=_desc(LineItem, "code", _BLANK))
+    description: str = Field(description=_desc(LineItem, "description"))
+    quantity: float | None = Field(description=_desc(LineItem, "quantity", " Null if not legible."))
+    unit: str = Field(description=_desc(LineItem, "unit", _BLANK))
+    unit_price: float | None = Field(description=_desc(LineItem, "unit_price", " Null if not legible."))
+    line_total: float | None = Field(description=_desc(LineItem, "line_total", " Null if not legible."))
+
+
+class WireDocument(BaseModel):
+    """What Claude returns. Converted with to_document()."""
+
+    document_type: DocumentType = Field(description=_desc(ExtractedDocument, "document_type"))
+    document_language: str = Field(description=_desc(ExtractedDocument, "document_language", _BLANK))
+    document_number: str = Field(description=_desc(ExtractedDocument, "document_number", _BLANK))
+    series: str = Field(description=_desc(ExtractedDocument, "series", _BLANK))
+    issue_date: str = Field(description=_desc(ExtractedDocument, "issue_date", _BLANK))
+    due_or_delivery_date: str = Field(description=_desc(ExtractedDocument, "due_or_delivery_date", _BLANK))
+    currency: str = Field(description=_desc(ExtractedDocument, "currency", _BLANK))
+    supplier: WireParty = Field(description=_desc(ExtractedDocument, "supplier"))
+    buyer: WireParty = Field(description=_desc(ExtractedDocument, "buyer"))
+    items: list[WireLineItem] = Field(description=_desc(ExtractedDocument, "items"))
+    items_subtotal: float | None = Field(description=_desc(ExtractedDocument, "items_subtotal", " Null if not printed."))
+    discount: float | None = Field(description=_desc(ExtractedDocument, "discount", " Null if not printed."))
+    freight: float | None = Field(description=_desc(ExtractedDocument, "freight", " Null if not printed."))
+    insurance: float | None = Field(description=_desc(ExtractedDocument, "insurance", " Null if not printed."))
+    other_charges: float | None = Field(description=_desc(ExtractedDocument, "other_charges", " Null if not printed."))
+    tax_added: float | None = Field(description=_desc(ExtractedDocument, "tax_added", " Null if none."))
+    grand_total: float | None = Field(description=_desc(ExtractedDocument, "grand_total", " Null if not printed."))
+    payment_terms: str = Field(description=_desc(ExtractedDocument, "payment_terms", _BLANK))
+    nfe_access_key: str = Field(
+        description=_desc(ExtractedDocument, "nfe_access_key").replace("Null", "Empty string")
+    )
+    notes: str = Field(description=_desc(ExtractedDocument, "notes", _BLANK))
+    extraction_notes: list[str] = Field(description=_desc(ExtractedDocument, "extraction_notes"))
+
+    def to_document(self) -> ExtractedDocument:
+        """"" -> None for text fields; nested parties/items converted too."""
+        data = {k: _none_if_blank(v) for k, v in self.model_dump(exclude={"supplier", "buyer", "items"}).items()}
+        data["supplier"] = self.supplier.to_party()
+        data["buyer"] = self.buyer.to_party()
+        data["items"] = [
+            LineItem.model_validate({k: (v if k == "description" else _none_if_blank(v))
+                                     for k, v in item.model_dump().items()})
+            for item in self.items
+        ]
+        data["extraction_notes"] = [n for n in self.extraction_notes if n.strip()]
+        return ExtractedDocument.model_validate(data)
+
+    @classmethod
+    def from_document(cls, doc: ExtractedDocument) -> "WireDocument":
+        """Inverse of to_document() (tests and fixtures): None -> "" for text fields."""
+        def blank(d: dict, numeric: set[str]) -> dict:
+            return {k: ("" if v is None and k not in numeric else v) for k, v in d.items()}
+
+        numbers = {"items_subtotal", "discount", "freight", "insurance", "other_charges", "tax_added",
+                   "grand_total", "line_number", "quantity", "unit_price", "line_total"}
+        data = blank(doc.model_dump(mode="json", exclude={"supplier", "buyer", "items"}), numbers)
+        for role in ("supplier", "buyer"):
+            party = blank(getattr(doc, role).model_dump(mode="json"), set())
+            party["tax_id_type"] = party["tax_id_type"] or NOT_PRINTED
+            data[role] = party
+        data["items"] = [blank(i.model_dump(mode="json"), numbers) for i in doc.items]
+        return cls.model_validate(data)
 
 
 CheckStatus = Literal["ok", "warning", "error", "info"]

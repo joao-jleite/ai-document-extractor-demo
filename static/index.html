@@ -26,6 +26,7 @@
     background: repeating-linear-gradient(-45deg, #FDE68A 0 14px, #FCD34D 14px 28px); color: #78350F;
     font-size: 12.5px; font-weight: 600; padding: 5px 16px; border-bottom: 1px solid #F59E0B; letter-spacing: .01em; }
   .ribbon b { background: #78350F; color: #FEF3C7; padding: 1px 8px; border-radius: 4px; letter-spacing: .08em; }
+  .ribbon b.mode { background: #0C4A6E; color: #E0F2FE; }
 
   header { max-width: 1240px; margin: 0 auto; padding: 16px 20px 6px; display: flex; align-items: center; gap: 14px; }
   .logo { width: 38px; height: 38px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; flex: none; }
@@ -35,6 +36,7 @@
   .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 11px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
   .chip i { font-style: normal; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
   .chip.replay i { background: var(--info); }
+  .chip.offline i { background: var(--warn); }
   .chip.nokey i { background: var(--err); }
 
   main { max-width: 1240px; margin: 0 auto; padding: 10px 20px 40px; display: grid; grid-template-columns: 330px 1fr; gap: 18px; align-items: start; }
@@ -187,7 +189,7 @@
 </style>
 </head>
 <body>
-<div class="ribbon"><b>DEMO</b> Sample documents, companies and outputs are fictitious · every export is watermarked "DEMO"</div>
+<div class="ribbon"><b>DEMO</b> <span id="ribbonText">Sample documents, companies and outputs are fictitious · every export is watermarked "DEMO"</span></div>
 
 <header>
   <div class="logo" aria-hidden="true">
@@ -249,7 +251,7 @@
         <div class="bar"><i></i></div>
         <ul class="plist" id="plist">
           <li data-s="0"><span class="dot"></span>Upload received and checked</li>
-          <li data-s="1"><span class="dot"></span>Extracting with Claude (structured output)</li>
+          <li data-s="1"><span class="dot"></span><span id="stepExtract">Extracting with Claude (structured output)</span></li>
           <li data-s="2"><span class="dot"></span>Validating totals, tax IDs, dates and currency</li>
           <li data-s="3"><span class="dot"></span>Building the XLSX and PDF report</li>
         </ul>
@@ -282,6 +284,7 @@ const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":
 const TYPE = { nfe_danfe: "NF-e (DANFE)", purchase_order: "Purchase order", commercial_invoice: "Commercial invoice", other: "Document" };
 const DEC = { CLP: 0, JPY: 0, PYG: 0 };
 let timerHandle = null;
+let MODE = "live";  // live | offline | replay, from /api/health
 
 function money(v, cur) {
   if (v === null || v === undefined) return "–";
@@ -300,7 +303,14 @@ function show(id) {
 // ---- health / model chip ----------------------------------------------------
 fetch("/api/health").then((r) => r.json()).then((h) => {
   const chip = $("#chipModel");
-  if (h.mode === "replay") { chip.classList.add("replay"); chip.innerHTML = `<i></i>replay mode · cached real results`; }
+  MODE = h.mode;
+  if (h.mode === "offline") {
+    // Offline mode never calls Claude: say so in the always-visible ribbon too.
+    chip.classList.add("offline"); chip.innerHTML = `<i></i>offline mode · no Claude call`;
+    $("#ribbonText").innerHTML = `<b class="mode">OFFLINE MODE</b> Claude is not called: each bundled sample loads its hand-written answer key · all data is fictitious`;
+    $("#stepExtract").textContent = "Loading the sample's answer key (offline mode, Claude is not called)";
+  }
+  else if (h.mode === "replay") { chip.classList.add("replay"); chip.innerHTML = `<i></i>replay mode · saved live results`; }
   else if (!h.api_key_configured) { chip.classList.add("nokey"); chip.innerHTML = `<i></i>no ANTHROPIC_API_KEY`; }
   else chip.innerHTML = `<i></i>${esc(h.model)}`;
 }).catch(() => {});
@@ -335,7 +345,7 @@ input.onchange = () => input.files[0] && handleFile(input.files[0]);
 drop.addEventListener("drop", (e) => e.dataTransfer.files[0] && handleFile(e.dataTransfer.files[0]));
 $("#errRetry").onclick = () => { show("#stEmpty"); input.value = ""; };
 
-function previewFile(file, url) {
+function previewFile(file, url, mode = MODE) {
   $("#uploadCard").classList.add("compact");
   $("#fileCard").classList.add("show");
   $("#fileName").textContent = file.name;
@@ -344,7 +354,8 @@ function previewFile(file, url) {
   if (file.type.startsWith("image/")) {
     thumb.innerHTML = `<img alt="uploaded image" src="${url || URL.createObjectURL(file)}">`;
   } else {
-    thumb.innerHTML = `<div class="pdfglyph"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="1.3"><path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/></svg><div>PDF sent natively to Claude<br>(text, layout and images)</div></div>`;
+    const how = mode === "offline" ? "Offline mode: this PDF is<br>not sent to Claude" : "PDF sent natively to Claude<br>(text, layout and images)";
+    thumb.innerHTML = `<div class="pdfglyph"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="1.3"><path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/></svg><div>${how}</div></div>`;
   }
 }
 
@@ -391,7 +402,7 @@ try {
   const last = JSON.parse(sessionStorage.getItem("lastResult") || "null");
   if (last && last.links) {
     const src = last.source;
-    previewFile({ name: src.filename, size: src.size_bytes, type: src.media_type || "" }, last.links.source);
+    previewFile({ name: src.filename, size: src.size_bytes, type: src.media_type || "" }, last.links.source, last.mode);
     renderResult(last);
     show("#stResult");
   }
@@ -424,7 +435,9 @@ function renderResult(r) {
       <a class="btn ghost" id="viewPdf" href="${r.links.pdf_view}">Open PDF ↗</a>
       <span class="toast" id="toast">✓ Downloaded</span>
     </div>
-    <div class="runmeta"><span>${esc(r.model)}</span><span>${r.mode === "replay" ? "replayed from a saved run" : "extracted in " + r.timing.extract_seconds + " s"}</span><span>${r.attempts} attempt${r.attempts === 1 ? "" : "s"}</span>${tokens}<span>${esc(r.source.filename)}</span></div>`;
+    <div class="runmeta">${r.mode === "offline"
+      ? `<span>Offline sample mode</span><span>answer key from samples/truth · Claude not called</span>`
+      : `<span>${esc(r.model)}</span><span>${r.mode === "replay" ? "replayed from a saved live run" : "extracted in " + r.timing.extract_seconds + " s"}</span><span>${r.attempts} attempt${r.attempts === 1 ? "" : "s"}</span>${tokens}`}<span>${esc(r.source.filename)}</span></div>`;
   ["#dlXlsx", "#dlPdf"].forEach((id) => $(id).addEventListener("click", () => {
     const t = $("#toast"); t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2500);
   }));

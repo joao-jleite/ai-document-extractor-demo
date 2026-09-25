@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from app.extractor import ExtractionError, InvalidFileError  # noqa: E402
 from app.pipeline import process  # noqa: E402
 
 SAMPLES = ROOT / "samples"
@@ -96,8 +97,11 @@ def main() -> int:
         sample = SAMPLES / truth["_sample"]
         # Replay runs go to tmp/ so they never overwrite the saved real outputs.
         stem_out = (ROOT / "tmp" / "replay" if args.replay else OUT) / sample.stem
-        stem_out.mkdir(parents=True, exist_ok=True)
-        result = process(sample.read_bytes(), sample.name, stem_out, mode="replay" if args.replay else "live")
+        try:
+            result = process(sample.read_bytes(), sample.name, stem_out, mode="replay" if args.replay else "live")
+        except (ExtractionError, InvalidFileError) as exc:  # e.g. missing/invalid key: stop, no report
+            print(f"error on {sample.name}: {exc}", file=sys.stderr)
+            return 2
         ok, total, misses = score(truth, result["document"])
         v = result["validation"]
         flags = ", ".join(f"{c['title']}" for c in v["checks"] if c["status"] in ("warning", "error")) or "all passed"

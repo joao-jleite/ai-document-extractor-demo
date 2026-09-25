@@ -1,9 +1,11 @@
 -r requirements.txt
-pytest>=8
+pytest==9.1.1
 # sample generation (rasterizes the DANFE before the "photo" effect)
-numpy>=1.26
-pypdfium2>=4
+numpy==2.5.3
+pypdfium2==5.13.0
 # demo recording and GIF/MP4 conversion
-playwright>=1.58
-imageio>=2.34
-imageio-ffmpeg>=0.5
+# playwright is pinned: each version needs its own Chromium build
+# (run `python -m playwright install chromium` once after installing)
+playwright==1.58.0
+imageio==2.37.4
+imageio-ffmpeg==0.6.0
