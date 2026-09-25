@@ -1,0 +1,9 @@
+-r requirements.txt
+pytest>=8
+# sample generation (rasterizes the DANFE before the "photo" effect)
+numpy>=1.26
+pypdfium2>=4
+# demo recording and GIF/MP4 conversion
+playwright>=1.58
+imageio>=2.34
+imageio-ffmpeg>=0.5

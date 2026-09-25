@@ -1,0 +1,78 @@
+{
+  "_sample": "danfe-exemplo-industrial.pdf",
+  "_note": "Ground truth: what is PRINTED on the fictitious sample.",
+  "document_type": "nfe_danfe",
+  "document_language": "pt",
+  "document_number": "4217",
+  "series": "1",
+  "issue_date": "2026-09-15",
+  "due_or_delivery_date": "2026-10-15",
+  "currency": "BRL",
+  "supplier": {
+    "name": "EXEMPLO INDUSTRIAL LTDA",
+    "tax_id": "11.222.333/0001-81",
+    "tax_id_type": "CNPJ",
+    "country": "BR"
+  },
+  "buyer": {
+    "name": "FICTÍCIA MINERAÇÃO E MÁQUINAS S.A.",
+    "tax_id": "12.ABC.345/01DE-35",
+    "tax_id_type": "CNPJ",
+    "country": "BR"
+  },
+  "items": [
+    {
+      "line_number": 1,
+      "code": "EI-1001",
+      "description": "Rolamento rígido de esferas 6205-2RS",
+      "quantity": 40,
+      "unit": "PC",
+      "unit_price": 38.5,
+      "line_total": 1540.0
+    },
+    {
+      "line_number": 2,
+      "code": "EI-2040",
+      "description": "Correia em V perfil B-54",
+      "quantity": 25,
+      "unit": "PC",
+      "unit_price": 64.9,
+      "line_total": 1622.5
+    },
+    {
+      "line_number": 3,
+      "code": "EI-3310",
+      "description": "Filtro de ar industrial 610x610x292 mm",
+      "quantity": 12,
+      "unit": "UN",
+      "unit_price": 289.0,
+      "line_total": 3468.0
+    },
+    {
+      "line_number": 4,
+      "code": "EI-4102",
+      "description": "Graxa de lítio EP2 - balde 20 kg",
+      "quantity": 6,
+      "unit": "BD",
+      "unit_price": 412.75,
+      "line_total": 2476.5
+    },
+    {
+      "line_number": 5,
+      "code": "EI-5007",
+      "description": "Parafuso sextavado M16x60 zincado (cx 50)",
+      "quantity": 10,
+      "unit": "CX",
+      "unit_price": 97.3,
+      "line_total": 973.0
+    }
+  ],
+  "items_subtotal": 10080.0,
+  "discount": 180.0,
+  "freight": 350.0,
+  "insurance": 0.0,
+  "other_charges": 0.0,
+  "tax_added": 250.4,
+  "grand_total": 10500.4,
+  "nfe_access_key": "35260911222333000181550010000042171739201841"
+}

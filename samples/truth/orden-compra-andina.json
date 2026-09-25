@@ -1,0 +1,78 @@
+{
+  "_sample": "orden-compra-andina.pdf",
+  "_note": "Ground truth: what is PRINTED on the fictitious sample.",
+  "document_type": "purchase_order",
+  "document_language": "es",
+  "document_number": "OC-2026-0917",
+  "series": null,
+  "issue_date": "2026-09-17",
+  "due_or_delivery_date": "2026-11-02",
+  "currency": "USD",
+  "supplier": {
+    "name": "Exemplo Industrial Ltda",
+    "tax_id": "11.222.333/0001-81",
+    "tax_id_type": "CNPJ",
+    "country": "BR"
+  },
+  "buyer": {
+    "name": "COMERCIAL ANDINA EJEMPLO SpA",
+    "tax_id": "76.543.210-3",
+    "tax_id_type": "RUT",
+    "country": "CL"
+  },
+  "items": [
+    {
+      "line_number": 1,
+      "code": "EI-7801",
+      "description": "Rodamiento de rodillos esféricos 22218 EK",
+      "quantity": 8,
+      "unit": "UN",
+      "unit_price": 186.4,
+      "line_total": 1491.2
+    },
+    {
+      "line_number": 2,
+      "code": "EI-7815",
+      "description": "Soporte de pie SNL 518-615",
+      "quantity": 8,
+      "unit": "UN",
+      "unit_price": 142.75,
+      "line_total": 1142.0
+    },
+    {
+      "line_number": 3,
+      "code": "EI-3310",
+      "description": "Filtro de aire industrial 610x610x292 mm",
+      "quantity": 24,
+      "unit": "UN",
+      "unit_price": 61.9,
+      "line_total": 1485.6
+    },
+    {
+      "line_number": 4,
+      "code": "EI-6620",
+      "description": "Acoplamiento elástico tipo grilla 1060T",
+      "quantity": 4,
+      "unit": "UN",
+      "unit_price": 318.0,
+      "line_total": 1272.0
+    },
+    {
+      "line_number": 5,
+      "code": "EI-9050",
+      "description": "Kit de sellos para ventilador axial",
+      "quantity": 10,
+      "unit": "KIT",
+      "unit_price": 54.35,
+      "line_total": 543.5
+    }
+  ],
+  "items_subtotal": 5934.3,
+  "discount": null,
+  "freight": 420.0,
+  "insurance": 38.6,
+  "other_charges": null,
+  "tax_added": null,
+  "grand_total": 6392.9,
+  "nfe_access_key": null
+}

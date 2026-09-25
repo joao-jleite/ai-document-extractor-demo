@@ -1,0 +1,10 @@
+# Normalise text files to LF; never touch binaries (PDF/XLSX would be corrupted by EOL conversion)
+* text=auto eol=lf
+*.pdf  binary
+*.xlsx binary
+*.jpg  binary
+*.jpeg binary
+*.png  binary
+*.gif  binary
+*.mp4  binary
+*.webm binary

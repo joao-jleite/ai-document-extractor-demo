@@ -1,0 +1,33 @@
+"""Runtime settings, read from environment variables (and a local .env file)."""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT / ".env")  # never overrides variables already set in the shell
+
+
+@dataclass(frozen=True)
+class Settings:
+    model: str = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")
+    # Effort controls how much the model thinks: low | medium | high.
+    effort: str = os.getenv("ANTHROPIC_EFFORT", "medium")
+    request_timeout_s: float = float(os.getenv("EXTRACT_TIMEOUT_SECONDS", "120"))
+    max_upload_mb: float = float(os.getenv("MAX_UPLOAD_MB", "20"))
+    runs_dir: Path = Path(os.getenv("RUNS_DIR", str(ROOT / "runs")))
+    # "live" calls the Claude API. "replay" serves cached results from
+    # REPLAY_DIR (matched by file SHA-256) so the UI can be tried without a key.
+    mode: str = os.getenv("EXTRACTOR_MODE", "live").lower()
+    replay_dir: Path = Path(os.getenv("REPLAY_DIR", str(ROOT / "examples" / "output")))
+
+    @property
+    def api_key_configured(self) -> bool:
+        return bool(os.getenv("ANTHROPIC_API_KEY"))
+
+
+settings = Settings()

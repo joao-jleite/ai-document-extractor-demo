@@ -1,0 +1,69 @@
+{
+  "_sample": "foto-danfe-parafusos.jpg",
+  "_note": "Ground truth: what is PRINTED on the fictitious sample.",
+  "document_type": "nfe_danfe",
+  "document_language": "pt",
+  "document_number": "18734",
+  "series": "2",
+  "issue_date": "2026-09-18",
+  "due_or_delivery_date": "2026-10-18",
+  "currency": "BRL",
+  "supplier": {
+    "name": "PARAFUSOS FICTÍCIOS DO BRASIL LTDA",
+    "tax_id": "23.456.789/0001-95",
+    "tax_id_type": "CNPJ",
+    "country": "BR"
+  },
+  "buyer": {
+    "name": "EXEMPLO INDUSTRIAL LTDA",
+    "tax_id": "11.222.333/0001-81",
+    "tax_id_type": "CNPJ",
+    "country": "BR"
+  },
+  "items": [
+    {
+      "line_number": 1,
+      "code": "PF-0110",
+      "description": "Parafuso Allen M8x25 inox A2 (cx 100)",
+      "quantity": 20,
+      "unit": "CX",
+      "unit_price": 42.6,
+      "line_total": 852.0
+    },
+    {
+      "line_number": 2,
+      "code": "PF-0225",
+      "description": "Porca sextavada M12 zincada (cx 100)",
+      "quantity": 15,
+      "unit": "CX",
+      "unit_price": 23.4,
+      "line_total": 351.0
+    },
+    {
+      "line_number": 3,
+      "code": "PF-0340",
+      "description": "Arruela lisa 1/2 pol. galvanizada (cx 200)",
+      "quantity": 25,
+      "unit": "CX",
+      "unit_price": 18.9,
+      "line_total": 427.5
+    },
+    {
+      "line_number": 4,
+      "code": "PF-0418",
+      "description": "Barra roscada M10 x 1 m aço carbono",
+      "quantity": 40,
+      "unit": "PC",
+      "unit_price": 9.75,
+      "line_total": 390.0
+    }
+  ],
+  "items_subtotal": 2065.5,
+  "discount": 0.0,
+  "freight": 85.0,
+  "insurance": 0.0,
+  "other_charges": 0.0,
+  "tax_added": 0.0,
+  "grand_total": 2150.5,
+  "nfe_access_key": "31260923456789000195550020000187341503188424"
+}
