@@ -433,7 +433,8 @@ def draw_danfe(d: dict, path: Path) -> dict:
 
     truth = {
         "document_type": "nfe_danfe", "document_language": "pt",
-        "document_number": str(d["numero"]), "series": str(d["serie"]),
+        # Exactly as printed on the DANFE ("Nº 000.004.217", "SÉRIE 001"); the scorer normalises.
+        "document_number": numero_fmt, "series": f"{d['serie']:03d}",
         "issue_date": d["issue"], "due_or_delivery_date": d["due"], "currency": "BRL",
         "supplier": {"name": e["name"], "tax_id": e["cnpj"], "tax_id_type": "CNPJ", "country": "BR"},
         "buyer": {"name": dst["name"], "tax_id": dst["cnpj"], "tax_id_type": "CNPJ", "country": "BR"},

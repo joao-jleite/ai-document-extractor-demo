@@ -145,7 +145,7 @@ def record(base: str, out: Path, sample: Path) -> None:
         glide_click(page, "#viewPdf")
         page.wait_for_load_state()
         mark("pdf")
-        page.wait_for_timeout(2900)
+        page.wait_for_timeout(3900)  # Chromium's PDF viewer needs ~1 s to paint before the report shows
         page.go_back()
         page.wait_for_selector("#stResult.show")
         page.wait_for_timeout(400)

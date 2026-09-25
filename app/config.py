@@ -33,7 +33,8 @@ class Settings:
 
     @property
     def api_key_configured(self) -> bool:
-        return bool(os.getenv("ANTHROPIC_API_KEY"))
+        # Read at call time; an empty value (the .env.example default) counts as missing.
+        return bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
 
 
 settings = Settings()

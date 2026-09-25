@@ -214,7 +214,8 @@ def main() -> int:
     gif = args.dest / "demo.gif"
     limit = 4_900_000  # bytes; stay safely under GitHub's comfortable 5 MB
     attempts = ((12, 192, (960, 600)), (10, 160, (960, 600)), (10, 128, (960, 600)), (9, 128, (960, 600)),
-                (8, 112, (960, 600)), (8, 96, (880, 550)), (7, 96, (880, 550)), (6, 80, (800, 500)))
+                (8, 112, (960, 600)), (8, 96, (960, 600)), (7, 112, (960, 600)),  # keep 960 px text sharp first
+                (8, 96, (880, 550)), (7, 96, (880, 550)), (6, 80, (800, 500)))
     for fps, colors, size in attempts:
         write_gif(lambda: stabilize(edited_frames(video, segs, fps, size)), gif, fps, colors)
         print(f"gif  {gif.stat().st_size / 1e6:.2f} MB  {fps} fps  {colors} colors  {size[0]}x{size[1]}")

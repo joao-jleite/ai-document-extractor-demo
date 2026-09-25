@@ -120,3 +120,54 @@ def test_exporters_write_files(tmp_path):
     assert wb.sheetnames == ["Header", "Items", "Validation"]
     assert "DEMO" in wb["Header"]["A1"].value
     assert pdf.read_bytes()[:5] == b"%PDF-"
+
+
+def _key_with_dv(first43: str) -> str:
+    """Append the mod-11 check digit (letters count as ord(c) - 48, like the alphanumeric CNPJ)."""
+    total, weight = 0, 2
+    for ch in reversed(first43):
+        total += (ord(ch) - 48) * weight
+        weight = 2 if weight == 9 else weight + 1
+    rest = total % 11
+    return first43 + str(0 if rest < 2 else 11 - rest)
+
+
+def test_nfe_key_with_alphanumeric_cnpj_issuer():
+    # Fictitious key: SP, 2026-09, issuer = the alphanumeric CNPJ format example, NF 4217.
+    key = _key_with_dv("352609" + "12ABC34501DE35" + "55" + "001" + "000004217" + "1" + "73920184")
+    assert len(key) == 44 and nfe_key_dv_ok(key)
+    assert not nfe_key_dv_ok(key[:-1] + str((int(key[-1]) + 1) % 10))
+    assert not nfe_key_dv_ok(key.replace("12ABC", "12ABD"))  # one letter changed -> DV no longer matches
+
+    doc = load_truth("danfe-exemplo-industrial").model_copy(deep=True)
+    doc.supplier.tax_id = "12.ABC.345/01DE-35"
+    # As the model copies it: 4-character groups separated by spaces, compacted by the schema.
+    doc = ExtractedDocument.model_validate({**doc.model_dump(), "nfe_access_key": " ".join(
+        key[i:i + 4] for i in range(0, 44, 4))})
+    assert doc.nfe_access_key == key
+    check = next(c for c in validate_document(doc, today=TODAY).checks if c.code == "nfe_key")
+    assert check.status == "ok", check.detail
+
+
+def test_pdf_title_with_markup_characters(tmp_path):
+    doc = load_truth("orden-compra-andina").model_copy(deep=True)
+    doc.document_number = "OC <7> & 8"  # would break reportlab's paragraph markup if not escaped
+    report = validate_document(doc, today=TODAY)
+    meta = {"filename": "po.pdf", "model": "test", "generated_at": "2026-09-25", "seconds": 1, "attempts": 1}
+    assert write_pdf(tmp_path / "po.pdf", doc, report, meta).read_bytes()[:5] == b"%PDF-"
+
+
+def test_user_documents_are_not_labelled_fictitious(tmp_path):
+    from openpyxl import load_workbook
+
+    from app.exporters import DEMO_BANNER, DEMO_BANNER_OWN
+
+    doc = load_truth("orden-compra-andina")
+    report = validate_document(doc, today=TODAY)
+    base = {"filename": "po.pdf", "model": "test", "generated_at": "2026-09-25", "seconds": 1, "attempts": 1}
+    own = write_xlsx(tmp_path / "own.xlsx", doc, report, {**base, "sample": False})
+    sample = write_xlsx(tmp_path / "sample.xlsx", doc, report, {**base, "sample": True})
+    assert load_workbook(own)["Header"]["A1"].value == DEMO_BANNER_OWN
+    assert "fictitious" not in DEMO_BANNER_OWN and "DEMO" in DEMO_BANNER_OWN
+    assert load_workbook(sample)["Header"]["A1"].value == DEMO_BANNER
+    assert write_pdf(tmp_path / "own.pdf", doc, report, {**base, "sample": False}).is_file()

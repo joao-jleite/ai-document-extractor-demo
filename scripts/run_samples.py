@@ -1,7 +1,8 @@
 """Run the real pipeline on every bundled sample and score it against the ground truth.
 
     python scripts/run_samples.py            # live: calls the Claude API
-    python scripts/run_samples.py --replay   # re-score the saved outputs, no API call
+    python scripts/run_samples.py --replay   # replay the saved outputs through the pipeline (writes to tmp/)
+    python scripts/run_samples.py --rescore  # re-score the saved live outputs, rewrite accuracy.md (no API call)
 
 Writes examples/output/<sample>.json|.xlsx|.report.pdf and examples/output/accuracy.md.
 """
@@ -46,6 +47,23 @@ def norm(v):
     return s
 
 
+# Written into accuracy.md so the "Fields correct" column can be checked by hand.
+NORMALISATION = (
+    "How fields are compared (`norm()` in `scripts/run_samples.py`): text ignores case, accents and repeated "
+    "spaces; numbers and IDs written with digits and `. / -` ignore that punctuation and leading zeros "
+    "(`000.004.217` = `4217`, `001` = `1`); amounts are compared as numbers; for discount, freight, insurance, "
+    "other charges and taxes, `0` and `null` (not printed) count as equal. *Exact match* counts the same fields "
+    "with no normalisation at all: identical strings, equal numbers."
+)
+
+
+def exact(a, b, field=""):
+    """Strict comparison: identical strings, equal numbers, nothing normalised."""
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return float(a) == float(b)
+    return a == b
+
+
 def same(a, b, field=""):
     na, nb = norm(a), norm(b)
     if field in {"discount", "freight", "insurance", "other_charges", "tax_added"}:
@@ -53,14 +71,14 @@ def same(a, b, field=""):
     return na == nb
 
 
-def score(truth: dict, got: dict) -> tuple[int, int, list[str]]:
+def score(truth: dict, got: dict, compare=same) -> tuple[int, int, list[str]]:
     ok = total = 0
     misses = []
 
     def cmp(path, a, b, field):
         nonlocal ok, total
         total += 1
-        if same(a, b, field):
+        if compare(a, b, field):
             ok += 1
         else:
             misses.append(f"{path}: expected {a!r}, got {b!r}")
@@ -79,9 +97,21 @@ def score(truth: dict, got: dict) -> tuple[int, int, list[str]]:
     return ok, total, misses
 
 
+def load_saved(sample: Path) -> dict:
+    """The result a LIVE run saved in examples/output/ for this sample (used by --rescore)."""
+    path = OUT / sample.stem / f"{sample.stem}.json"
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    if saved.get("mode") != "live":
+        raise ValueError(f"{path} is not the result of a live run")
+    return saved
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--replay", action="store_true", help="re-use saved outputs instead of calling the API")
+    how = ap.add_mutually_exclusive_group()
+    how.add_argument("--replay", action="store_true", help="re-use saved outputs instead of calling the API")
+    how.add_argument("--rescore", action="store_true",
+                     help="score the saved live outputs again and rewrite examples/output/accuracy.md (no API call)")
     args = ap.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -90,7 +120,8 @@ def main() -> int:
     lines = ["# Accuracy on the bundled samples", "",
              "Field-by-field comparison between the extraction and the ground truth written by "
              "`scripts/make_samples.py` (what is printed on each fictitious document).", "",
-             "| Sample | Model | Fields correct | Validation | Time (s) |", "|---|---|---|---|---|"]
+             NORMALISATION, "",
+             "| Sample | Model | Fields correct | Exact match | Validation | Time (s) |", "|---|---|---|---|---|---|"]
     details = []
     for truth_file in sorted(TRUTH.glob("*.json")):
         truth = json.loads(truth_file.read_text(encoding="utf-8"))
@@ -98,21 +129,26 @@ def main() -> int:
         # Replay runs go to tmp/ so they never overwrite the saved real outputs.
         stem_out = (ROOT / "tmp" / "replay" if args.replay else OUT) / sample.stem
         try:
-            result = process(sample.read_bytes(), sample.name, stem_out, mode="replay" if args.replay else "live")
-        except (ExtractionError, InvalidFileError) as exc:  # e.g. missing/invalid key: stop, no report
+            if args.rescore:
+                result = load_saved(sample)
+            else:
+                result = process(sample.read_bytes(), sample.name, stem_out,
+                                 mode="replay" if args.replay else "live")
+        except (ExtractionError, InvalidFileError, OSError, ValueError) as exc:  # e.g. missing key: no report
             print(f"error on {sample.name}: {exc}", file=sys.stderr)
             return 2
         ok, total, misses = score(truth, result["document"])
+        strict_ok, _, _ = score(truth, result["document"], compare=exact)
         v = result["validation"]
         flags = ", ".join(f"{c['title']}" for c in v["checks"] if c["status"] in ("warning", "error")) or "all passed"
-        lines.append(f"| `{sample.name}` | {result['model']} | {ok}/{total} ({ok / total:.0%}) | {flags} | "
-                     f"{result['timing']['extract_seconds']} |")
+        lines.append(f"| `{sample.name}` | {result['model']} | {ok}/{total} ({ok / total:.0%}) | "
+                     f"{strict_ok}/{total} | {flags} | {result['timing']['extract_seconds']} |")
         details.append(f"\n## {sample.name}\n\n" + ("\n".join(f"- {m}" for m in misses) if misses else "- no differences"))
-        print(f"{sample.name:32s} {ok}/{total} fields  validation={v['status']}  ({flags})")
+        print(f"{sample.name:32s} {ok}/{total} fields (exact {strict_ok}/{total})  validation={v['status']}  ({flags})")
         for m in misses:
             print(f"    - {m}")
     report = (ROOT / "tmp" if args.replay else OUT) / "accuracy.md"
-    report.write_text("\n".join(lines + details) + "\n", encoding="utf-8")
+    report.write_text("\n".join(lines + details) + "\n", encoding="utf-8", newline="\n")
     print(f"\nwrote {report}")
     return 0
 

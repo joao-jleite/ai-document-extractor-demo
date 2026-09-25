@@ -1,8 +1,9 @@
 """Pydantic models shared by the extractor, the validator and the exporters.
 
-`ExtractedDocument` doubles as the JSON schema sent to Claude (structured output):
-the SDK converts it with `TypeAdapter(...).json_schema()`, so field descriptions
-here are effectively part of the prompt. Keep them precise.
+`ExtractedDocument` is the model the validator, the exporters and the API use.
+Claude fills the stricter `WireDocument` below (structured output), whose field
+descriptions are copied from the ones here: they are effectively part of the
+prompt, so keep them precise.
 """
 
 from __future__ import annotations
@@ -121,9 +122,10 @@ class ExtractedDocument(BaseModel):
 
     @field_validator("nfe_access_key")
     @classmethod
-    def _digits_only(cls, v: str | None) -> str | None:
-        # The model is told to drop spaces, but be tolerant anyway.
-        return "".join(ch for ch in v if ch.isdigit()) if v else v
+    def _compact_key(cls, v: str | None) -> str | None:
+        # The model copies the key WITH the spaces between the 4-character groups:
+        # keep only letters and digits (letters for an alphanumeric CNPJ issuer).
+        return "".join(ch for ch in v if ch.isascii() and ch.isalnum()).upper() if v else v
 
 
 # ---------------------------------------------------------------------------

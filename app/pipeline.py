@@ -112,9 +112,12 @@ def process(data: bytes, filename: str, out_dir: Path | None = None, *, mode: st
     report = validate_document(result.document)
 
     generated_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %z")
+    digest = hashlib.sha256(data).hexdigest()
+    # "Fictitious data" is only true for the bundled samples; a user's own file is labelled DEMO only.
+    is_sample = _bundled_sample(digest) is not None
     meta = {
         "filename": filename, "model": result.model, "generated_at": generated_at,
-        "seconds": result.seconds, "attempts": result.attempts, "mode": mode,
+        "seconds": result.seconds, "attempts": result.attempts, "mode": mode, "sample": is_sample,
     }
     media_type = sniff_media_type(data)
     created = not out_dir.exists()
@@ -132,14 +135,15 @@ def process(data: bytes, filename: str, out_dir: Path | None = None, *, mode: st
 
     payload = {
         "demo": True,
-        "notice": "DEMO - all sample documents and outputs are fictitious.",
+        "notice": ("DEMO - bundled fictitious sample: the document and its outputs are fictitious." if is_sample
+                   else "DEMO - output of a demo tool, not validated for production use. Review before use."),
         "run_id": run_id,
         "mode": mode,
         "source": {
             "filename": filename,
             "media_type": media_type,
             "size_bytes": len(data),
-            "sha256": hashlib.sha256(data).hexdigest(),
+            "sha256": digest,
         },
         "model": result.model,
         "attempts": result.attempts,

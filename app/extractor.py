@@ -5,9 +5,10 @@
 - `client.messages.parse(output_format=WireDocument)` constrains the answer to
   our JSON schema and validates it with Pydantic; `to_document()` then converts
   it to `ExtractedDocument` (see app/schema.py for why the two differ).
-- Errors: invalid files are rejected before any API call; timeouts, network
-  errors, 429/5xx and invalid/truncated responses are retried ONCE; auth/model
-  errors fail fast with a clear message.
+- Errors: invalid files and a missing ANTHROPIC_API_KEY are rejected before any
+  API call; timeouts, network errors, 408/429/5xx and invalid/truncated responses
+  are retried ONCE; auth/model errors, other 4xx and refusals fail fast with a
+  clear message.
 """
 
 from __future__ import annotations
@@ -152,13 +153,31 @@ def _content_blocks(prepared: PreparedInput) -> list[dict]:
 # Model call with explicit retry policy
 # ---------------------------------------------------------------------------
 
+MISSING_KEY = ("ANTHROPIC_API_KEY is not set. Put your key in .env (see .env.example), or try the "
+               "bundled samples without a key: --replay / --offline in the CLI, EXTRACTOR_MODE=replay "
+               "or offline for the web app.")
+
+
 def _client() -> anthropic.Anthropic:
     # max_retries=0: the retry policy lives in extract() so it is explicit and testable.
     return anthropic.Anthropic(max_retries=0, timeout=settings.request_timeout_s)
 
 
+def _retry_after(exc: anthropic.APIStatusError, default: float = 5.0) -> float:
+    """Seconds to wait from a Retry-After header. It may also be an HTTP date
+    (RFC 9110), which we do not parse: fall back to the default."""
+    try:
+        return float(exc.response.headers.get("retry-after", default))
+    except (TypeError, ValueError):
+        return default
+
+
 def extract(data: bytes, filename: str = "upload", *, model: str | None = None) -> ExtractionResult:
     prepared = prepare_input(data, filename)
+    # Checked before building the client: without a key the SDK only fails later,
+    # inside the request, with a bare TypeError ("Could not resolve authentication method").
+    if not settings.api_key_configured:
+        raise ExtractionError(MISSING_KEY, status_code=401)
     model = model or settings.model
     client = _client()
     started = time.perf_counter()
@@ -175,7 +194,8 @@ def extract(data: bytes, filename: str = "upload", *, model: str | None = None) 
                 output_config={"effort": settings.effort},
             )
             if response.stop_reason == "refusal":
-                raise ExtractionError("The model declined to process this document.", retryable=True)
+                # Same input, same answer: a refusal is not retried.
+                raise ExtractionError("The model declined to process this document.", status_code=422)
             if response.stop_reason == "max_tokens":
                 raise ExtractionError("The model response was truncated (max_tokens).", retryable=True)
             if response.parsed_output is None:
@@ -203,16 +223,25 @@ def extract(data: bytes, filename: str = "upload", *, model: str | None = None) 
             raise ExtractionError(f"Model '{model}' not found. Check ANTHROPIC_MODEL.", status_code=400) from exc
         except (anthropic.BadRequestError, anthropic.RequestTooLargeError) as exc:
             raise ExtractionError(f"The API rejected the document: {exc.message}", status_code=400) from exc
+        except TypeError as exc:
+            # Safety net: the SDK raises TypeError when it finds no credentials at all.
+            if "authentication" not in str(exc):
+                raise
+            raise ExtractionError(MISSING_KEY, status_code=401) from exc
 
         # --- retryable: transient failures ----------------------------------
         except anthropic.RateLimitError as exc:
-            wait = min(float(exc.response.headers.get("retry-after", "5") or 5), 20.0)
+            wait = min(_retry_after(exc), 20.0)
             last_error = ExtractionError("Rate limited by the API.", status_code=429, retryable=True)
             if attempt == 1:
                 time.sleep(wait)
             continue
-        except anthropic.APIStatusError as exc:  # 5xx, 529 overloaded...
-            last_error = ExtractionError(f"API error {exc.status_code}.", retryable=True)
+        except anthropic.APIStatusError as exc:
+            if exc.status_code != 408 and exc.status_code < 500:
+                # Any other 4xx (409, 422...) is a problem with the request: retrying will not help.
+                raise ExtractionError(f"The API rejected the request (HTTP {exc.status_code}): {exc.message}",
+                                      status_code=400) from exc
+            last_error = ExtractionError(f"API error {exc.status_code}.", retryable=True)  # 408, 5xx, 529
         except anthropic.APITimeoutError:
             last_error = ExtractionError(
                 f"The model did not answer within {settings.request_timeout_s:g}s.",
@@ -227,6 +256,8 @@ def extract(data: bytes, filename: str = "upload", *, model: str | None = None) 
                 f"Invalid structured response ({exc.error_count()} schema errors).", retryable=True
             )
         except ExtractionError as exc:
+            if not exc.retryable:
+                raise
             last_error = exc
 
         if attempt == 1:

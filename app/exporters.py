@@ -21,6 +21,13 @@ from .schema import ExtractedDocument, ValidationReport
 from .validation import CURRENCY_DECIMALS, line_mismatches
 
 DEMO_BANNER = "DEMO  -  fictitious data  -  AI Document Extractor"
+# A user's own document is not fictitious: its outputs are only marked DEMO.
+DEMO_BANNER_OWN = "DEMO  -  AI Document Extractor  -  review before use"
+
+
+def _is_sample(meta: dict) -> bool:
+    """True for the bundled fictitious samples (pipeline matches them by SHA-256)."""
+    return bool(meta.get("sample", True))
 DOC_TYPE_LABEL = {
     "nfe_danfe": "NF-e (DANFE)",
     "purchase_order": "Purchase order",
@@ -117,9 +124,9 @@ _THIN = Side(style="thin", color="CBD5E1")
 _BORDER = Border(bottom=_THIN)
 
 
-def _banner(ws, width: int, subtitle: str) -> None:
+def _banner(ws, width: int, subtitle: str, text: str = DEMO_BANNER) -> None:
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=width)
-    c = ws.cell(row=1, column=1, value=DEMO_BANNER)
+    c = ws.cell(row=1, column=1, value=text)
     c.fill, c.font = _BANNER_FILL, Font(bold=True, size=12, color="78350F")
     c.alignment = Alignment(vertical="center")
     ws.row_dimensions[1].height = 22
@@ -146,11 +153,12 @@ def write_xlsx(path: Path, doc: ExtractedDocument, report: ValidationReport, met
         f"Source: {meta.get('filename')}  |  {who}: {meta.get('model')}  |  "
         f"Generated: {meta.get('generated_at')}"
     )
+    banner = DEMO_BANNER if _is_sample(meta) else DEMO_BANNER_OWN
 
     # --- Header -----------------------------------------------------------
     ws = wb.active
     ws.title = "Header"
-    _banner(ws, 2, subtitle)
+    _banner(ws, 2, subtitle, banner)
     _header_row(ws, 4, ["Field", "Value"])
     for i, (label, value, kind) in enumerate(header_rows(doc, report), start=5):
         ws.cell(row=i, column=1, value=label).font = Font(bold=True, color="334155")
@@ -175,7 +183,7 @@ def write_xlsx(path: Path, doc: ExtractedDocument, report: ValidationReport, met
     # --- Items ------------------------------------------------------------
     wi = wb.create_sheet("Items")
     heads = ["#", "Code", "Description", "Qty", "Unit", "Unit price", "Line total", "Qty x price", "Check"]
-    _banner(wi, len(heads), subtitle)
+    _banner(wi, len(heads), subtitle, banner)
     _header_row(wi, 4, heads)
     flagged = line_mismatches(doc)
     dec = CURRENCY_DECIMALS.get(cur or "", 2)
@@ -234,7 +242,7 @@ def write_xlsx(path: Path, doc: ExtractedDocument, report: ValidationReport, met
 
     # --- Validation ---------------------------------------------------------
     wv = wb.create_sheet("Validation")
-    _banner(wv, 3, subtitle)
+    _banner(wv, 3, subtitle, banner)
     _header_row(wv, 4, ["Status", "Check", "Detail"])
     order = {"error": 0, "warning": 1, "ok": 2, "info": 3}
     for i, chk in enumerate(sorted(report.checks, key=lambda c: order[c.status]), start=5):
@@ -275,8 +283,9 @@ PDF_STATUS = {
 }
 
 
-def _page_decor(canvas, doc_template):
-    """Header strip, diagonal DEMO watermark and footer on every page."""
+def _page_decor(canvas, doc_template, sample: bool = True):
+    """Header strip, diagonal DEMO watermark and footer on every page.
+    "Fictitious" is printed only for the bundled samples (not for a user's own file)."""
     w, h = A4
     canvas.saveState()
     # watermark
@@ -294,12 +303,14 @@ def _page_decor(canvas, doc_template):
     canvas.setFont("Helvetica-Bold", 9)
     canvas.drawString(15 * mm, h - 7.5 * mm, "DEMO  -  AI Document Extractor  -  extraction report")
     canvas.setFont("Helvetica", 8)
-    canvas.drawRightString(w - 15 * mm, h - 7.5 * mm, "All data is fictitious")
+    canvas.drawRightString(w - 15 * mm, h - 7.5 * mm,
+                           "All data is fictitious" if sample else "Demo output - review before use")
     canvas.setStrokeColor(LINE)
     canvas.line(15 * mm, 14 * mm, w - 15 * mm, 14 * mm)
     canvas.setFillColor(MUTED)
     canvas.setFont("Helvetica", 7.5)
-    canvas.drawString(15 * mm, 9 * mm, "DEMO - fictitious data. Generated automatically; review before use.")
+    canvas.drawString(15 * mm, 9 * mm, "DEMO - fictitious data. Generated automatically; review before use."
+                      if sample else "DEMO - generated automatically by a demo tool; review before use.")
     canvas.drawRightString(w - 15 * mm, 9 * mm, f"Page {doc_template.page}")
     canvas.restoreState()
 
@@ -321,10 +332,14 @@ def write_pdf(path: Path, doc: ExtractedDocument, report: ValidationReport, meta
 
     story = []
     title = f"{DOC_TYPE_LABEL.get(doc.document_type, 'Document')} {doc.document_number or ''}".strip()
-    story += [Paragraph(title, h1), Spacer(1, 2 * mm)]
+    story += [P(title, h1), Spacer(1, 2 * mm)]  # P() escapes '&' and '<' (reportlab markup)
     if meta.get("mode") == "offline":  # no model call: no model name, time or attempts to report
         run_line = (f"Source file: {meta.get('filename')}  |  Extraction: {meta.get('model')}  |  "
                     f"Processed: {meta.get('generated_at')}")
+    elif meta.get("mode") == "replay":  # no call now: the time is the saved live run's, attempts do not apply
+        run_line = (f"Source file: {meta.get('filename')}  |  Model: {meta.get('model')}  |  "
+                    f"Processed: {meta.get('generated_at')}  |  Extraction time of the saved live run: "
+                    f"{meta.get('seconds')} s")
     else:
         run_line = (f"Source file: {meta.get('filename')}  |  Model: {meta.get('model')}  |  "
                     f"Processed: {meta.get('generated_at')}  |  Extraction time: {meta.get('seconds')} s  |  "
@@ -424,5 +439,6 @@ def write_pdf(path: Path, doc: ExtractedDocument, report: ValidationReport, meta
         str(path), pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=20 * mm,
         bottomMargin=20 * mm, title="DEMO - Extraction report", author="AI Document Extractor (demo)",
     )
-    pdf.build(story, onFirstPage=_page_decor, onLaterPages=_page_decor)
+    decor = lambda canvas, tpl: _page_decor(canvas, tpl, _is_sample(meta))  # noqa: E731
+    pdf.build(story, onFirstPage=decor, onLaterPages=decor)
     return path

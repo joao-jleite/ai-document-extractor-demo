@@ -5,14 +5,17 @@
     python scripts/build_demo_assets.py --assets-dir ../assets/demo-a
 
 1. scripts/run_samples.py      -> examples/output/* (+ accuracy.md vs ground truth)   [live only]
-2. scripts/record_demo.py      -> recordings/demo.webm + screenshots
-3. scripts/make_media.py       -> docs/demo.gif, docs/demo.mp4
-4. screenshots re-saved without metadata into docs/ (and --assets-dir, if given)
+2. scripts/record_demo.py      -> demo.webm: a LIVE Claude call on the photo sample
+3. scripts/record_demo.py      -> screenshots in REPLAY mode, so they show exactly the
+                                  saved run of step 1 (the numbers in the README table)
+4. scripts/make_media.py       -> docs/demo.gif, docs/demo.mp4
+5. screenshots re-saved without metadata into docs/ (and --assets-dir, if given)
 
-Live mode needs ANTHROPIC_API_KEY (env or .env) and costs a few cents of API usage.
---offline records the same UI with the samples' hand-written answer keys: the UI,
-the exports and therefore the recording all say "offline mode", and no accuracy
-report is written (comparing the answer key with itself would prove nothing).
+The GIF comes from its own live call, so its time and token counts differ slightly
+from the saved run. Live mode needs ANTHROPIC_API_KEY (env or .env) and costs a few
+cents of API usage. --offline records the same UI with the samples' hand-written
+answer keys: the UI, the exports and therefore the recording all say "offline mode",
+and no accuracy report is written (comparing the answer key with itself would prove nothing).
 """
 
 from __future__ import annotations
@@ -44,19 +47,24 @@ def clean_png(src: Path, dest: Path) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--assets-dir", type=Path, default=None, help="extra folder to copy the media to")
+    ap.add_argument("--rec-dir", type=Path, default=ROOT / "recordings", help="working folder for the raw recording")
     ap.add_argument("--skip-samples", action="store_true", help="live: do not re-run scripts/run_samples.py")
+    ap.add_argument("--skip-video", action="store_true", help="keep the current GIF/MP4, only redo the screenshots")
     ap.add_argument("--offline", action="store_true",
                     help="record in offline sample mode (no API call, no accuracy report)")
     args = ap.parse_args()
     mode = "offline" if args.offline else "live"
+    shot_mode = "offline" if args.offline else "replay"  # screenshots = the saved run in examples/output
 
-    rec = ROOT / "recordings"
+    rec = args.rec_dir
     docs = ROOT / "docs"
     docs.mkdir(exist_ok=True)
     if mode == "live" and not args.skip_samples:
         run("scripts/run_samples.py")
-    run("scripts/record_demo.py", "--out", str(rec), "--mode", mode, mode=mode)
-    run("scripts/make_media.py", "--src", str(rec), "--dest", str(docs), mode=mode)
+    if not args.skip_video:
+        run("scripts/record_demo.py", "--out", str(rec), "--mode", mode, "--skip-screenshots", mode=mode)
+        run("scripts/make_media.py", "--src", str(rec), "--dest", str(docs), mode=mode)
+    run("scripts/record_demo.py", "--out", str(rec), "--mode", shot_mode, "--skip-video", mode=shot_mode)
 
     shots = sorted(rec.glob("screenshot-*.png"))
     for shot in shots:

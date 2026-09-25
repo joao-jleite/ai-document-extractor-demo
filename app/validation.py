@@ -21,9 +21,6 @@ CURRENCY_DECIMALS: dict[str, int] = {
     "AUD": 2,
 }
 
-# Expected local currency when the document type implies a country.
-COUNTRY_CURRENCY = {"BR": "BRL", "CL": "CLP", "US": "USD"}
-
 
 # ---------------------------------------------------------------------------
 # Tax IDs
@@ -91,15 +88,23 @@ def guess_tax_id_type(party: Party) -> str:
 
 
 # ---------------------------------------------------------------------------
-# NF-e access key (chave de acesso, 44 digits)
+# NF-e access key (chave de acesso, 44 characters)
 # ---------------------------------------------------------------------------
 
+# cUF(2) AAMM(4) issuer CNPJ(14) model(2) series(3) number(9) emission type(1) code(8) DV(1).
+# With the alphanumeric CNPJ (NT 2025.001), the 12 first CNPJ characters may be
+# letters; everything else, the CNPJ check digits and the key's DV stay numeric.
+NFE_KEY = re.compile(r"\d{6}[0-9A-Z]{12}\d{26}")
+
+
 def nfe_key_dv_ok(key: str) -> bool:
-    if not re.fullmatch(r"\d{44}", key or ""):
+    """Mod-11 check digit (weights 2..9). Letters count as ord(char) - 48, as in the
+    alphanumeric CNPJ, so an all-digit key gets exactly the classic result."""
+    if not NFE_KEY.fullmatch(key or ""):
         return False
     total, weight = 0, 2
     for ch in reversed(key[:43]):
-        total += int(ch) * weight
+        total += (ord(ch) - 48) * weight
         weight = 2 if weight == 9 else weight + 1
     rest = total % 11
     dv = 0 if rest < 2 else 11 - rest
@@ -301,13 +306,13 @@ def validate_document(doc: ExtractedDocument, today: date | None = None) -> Vali
     if doc.document_type == "nfe_danfe":
         key = doc.nfe_access_key or ""
         if not key:
-            add("nfe_key", "warning", "NF-e access key", "No 44-digit access key found.", "nfe_access_key")
+            add("nfe_key", "warning", "NF-e access key", "No 44-character access key found.", "nfe_access_key")
         elif not nfe_key_dv_ok(key):
             add("nfe_key", "error", "NF-e access key",
-                "Key is not 44 digits or its check digit is invalid.", "nfe_access_key")
+                "Key is not 44 characters or its check digit is invalid.", "nfe_access_key")
         else:
             issues = []
-            supplier_id = re.sub(r"[.\-/\s]", "", doc.supplier.tax_id or "")
+            supplier_id = re.sub(r"[.\-/\s]", "", doc.supplier.tax_id or "").upper()
             if supplier_id and key[6:20] != supplier_id:
                 issues.append("issuer CNPJ inside the key differs from the supplier CNPJ")
             if issue and key[2:6] != issue.strftime("%y%m"):

@@ -22,7 +22,7 @@ ICON = {"ok": "[ OK ]", "warning": "[WARN]", "error": "[FAIL]", "info": "[INFO]"
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Extract and validate data from an NF-e/DANFE or purchase order.")
-    ap.add_argument("file", type=Path, help="PDF, JPG or PNG")
+    ap.add_argument("file", type=Path, help="PDF, JPG, PNG or WEBP")
     ap.add_argument("--out", type=Path, default=None, help="output folder (default: runs/<timestamp>)")
     modes = ap.add_mutually_exclusive_group()
     modes.add_argument("--offline", action="store_true",

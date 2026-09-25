@@ -6,7 +6,7 @@
 
 [English README](README.md) · [Video MP4](docs/demo.mp4) · Python 3.12 · FastAPI · Claude API · Pydantic · openpyxl · reportlab
 
-El GIF y las capturas se grabaron con llamadas reales a la API de Claude (`claude-sonnet-5`). En el GIF la espera del modelo va en cámara rápida, y un indicador en pantalla muestra la duración real.
+El GIF se grabó con una llamada real a la API de Claude (`claude-sonnet-5`) sobre la foto de ejemplo. La espera del modelo va en cámara rápida, y un indicador en pantalla muestra la espera real. Es una llamada distinta de la ejecución de la tabla de abajo, así que su tiempo y sus tokens varían un poco (11,39 s, 8.566 / 1.025 tokens). Las capturas se tomaron en modo replay, así que muestran exactamente la ejecución guardada de la tabla. Las "Reader notes" son comentarios libres del propio modelo: la interfaz las muestra como información y nada las valida.
 
 ## Problema
 
@@ -22,15 +22,15 @@ Se sube un PDF o una foto y se obtienen datos estructurados. En los tres documen
    - suma de las líneas = subtotal impreso
    - subtotal − descuento + flete + seguro + otros cargos + impuestos = total general
    - dígitos verificadores de CNPJ (incluido el **CNPJ alfanumérico** de 2026), CPF y **RUT** chileno
-   - clave de acceso de la NF-e: dígito verificador mod 11, y el CNPJ, año/mes y número dentro de la clave deben coincidir con el documento
+   - clave de acceso de la NF-e: dígito verificador mod 11, y el CNPJ, año/mes y número dentro de la clave deben coincidir con el documento (también se aceptan claves de emisores con CNPJ alfanumérico)
    - fechas, campos obligatorios y moneda ISO 4217 (por ejemplo, CLP sin decimales)
-3. **Exportar.** Planilla **XLSX** (hojas Header, Items y Validation), **informe PDF** y JSON, todos marcados como DEMO.
+3. **Exportar.** Planilla **XLSX** (hojas Header, Items y Validation), **informe PDF** y JSON, todos marcados como DEMO. Las salidas de los ejemplos incluidos dicen además que los datos son ficticios; las de sus propios documentos no.
 
 El modelo transcribe lo impreso y nunca "corrige" un total, así la validación detecta errores del propio documento. La foto de ejemplo tiene un error intencional: la línea 3 dice `427,50` en vez de 25 × 18,90 = `472,50`. En la ejecución real de abajo, Claude transcribió el `427,50` tal como está impreso y la validación lo señaló dos veces: en la línea y en el subtotal.
 
 ## Resultados con los ejemplos incluidos
 
-Una ejecución real por documento el 2026-09-25, modelo `claude-sonnet-5`, effort `medium`. Cada extracción se compara campo por campo con el resultado esperado (`samples/truth/`): 14 campos de encabezado, 4 campos por empresa (nombre, RUT/CNPJ, tipo, país), la cantidad de ítems y 6 campos por ítem. El informe completo está en [`examples/output/accuracy.md`](examples/output/accuracy.md), junto con el JSON, el XLSX y el PDF de cada ejecución.
+Una ejecución real por documento el 2026-09-25, modelo `claude-sonnet-5`, effort `medium`. Cada extracción se compara campo por campo con el resultado esperado (`samples/truth/`): 14 campos de encabezado, 4 campos por empresa (nombre, RUT/CNPJ, tipo, país), la cantidad de ítems y 6 campos por ítem. El texto se compara sin distinguir mayúsculas ni acentos, y los números e identificadores sin puntuación ni ceros a la izquierda (las reglas exactas están al inicio de `accuracy.md`). Una comparación estricta, sin normalizar nada, también está en el informe y da los mismos valores en esta ejecución. El informe completo está en [`examples/output/accuracy.md`](examples/output/accuracy.md), junto con el JSON, el XLSX y el PDF de cada ejecución.
 
 | Documento | Campos correctos | Validación | Llamada al modelo | Tokens (entrada / salida) |
 |---|---|---|---|---|
@@ -63,11 +63,11 @@ Son tres documentos sintéticos y una ejecución por documento: muestran el fluj
 - **Interfaz web**: subir por arrastrar y soltar o con un clic en los ejemplos, vista de procesamiento con cronómetro, resumen, lista de validaciones, ítems con las diferencias resaltadas, descargas y vista previa del PDF y del XLSX generados.
 - **CLI**: `python extract.py <archivo>` muestra la extracción y las validaciones y escribe JSON, XLSX y PDF. Código de salida `0` = OK, `1` = requiere revisión, `2` = no se pudo procesar.
 - **Entrada robusta**: el tipo de archivo se detecta por el contenido, no por la extensión. Las fotos se rotan según EXIF, se reducen y se les quitan los metadatos. Archivos vacíos, truncados o demasiado grandes se rechazan antes de llamar a la API. Una ejecución fallida no deja carpetas vacías.
-- **Reintentos explícitos**: un reintento ante timeout, error de red, 429/5xx o respuesta estructurada inválida o truncada. Una clave o modelo inválido falla de inmediato con un mensaje claro.
+- **Reintentos explícitos**: un reintento ante timeout, error de red, 408/429/5xx o respuesta estructurada inválida o truncada. Una clave ausente o inválida, un modelo inexistente, un rechazo del modelo o cualquier otro error 4xx fallan de inmediato con un mensaje claro: código de salida 2 en el CLI y un error JSON en la API web.
 - **Dos formas de probar sin clave de API** (solo con los ejemplos incluidos, identificados por SHA-256):
   - `replay` muestra los resultados guardados de la ejecución real en `examples/output/`, marcados como replay.
   - `offline` no llama a Claude: carga el resultado esperado escrito a mano (`samples/truth/`). La interfaz, las exportaciones y la CLI lo indican en cada salida. Sirve para probar la validación y las exportaciones; no dice nada sobre la calidad de la extracción.
-- **Pruebas**: 40 pruebas sin red: algoritmos de RUT/CNPJ/CPF, reglas de negocio, exportaciones, validación de archivos, política de reintentos (cliente falso), los tres modos y la solicitud que arma el SDK (transporte HTTP simulado).
+- **Pruebas**: 54 pruebas sin red: algoritmos de RUT/CNPJ/CPF, reglas de negocio, exportaciones, validación de archivos, política de reintentos (cliente falso), los tres modos, el caso sin clave (CLI y API) y la solicitud que arma el SDK (transporte HTTP simulado).
 
 ## Nota de diseño: dos esquemas
 
@@ -137,7 +137,7 @@ python extract.py samples/orden-compra-andina.pdf --replay
 python extract.py samples/foto-danfe-parafusos.jpg --offline
 ```
 
-`EXTRACTOR_MODE=offline` se usa igual para el modo sin Claude. Ambos modos solo aceptan los tres ejemplos incluidos.
+`EXTRACTOR_MODE=offline` se usa igual para el modo sin Claude. Ambos modos solo aceptan los tres ejemplos incluidos. Si el modo real se ejecuta sin clave, el CLI termina con código de salida 2 y la página web muestra el mismo mensaje, que indica estos dos modos.
 
 ### Configuración (`.env`)
 
@@ -155,10 +155,11 @@ python extract.py samples/foto-danfe-parafusos.jpg --offline
 ```powershell
 .venv\Scripts\python -m pip install -r requirements-dev.txt
 .venv\Scripts\python -m playwright install chromium   # una vez, para grabar la demo (Playwright 1.58.0)
-.venv\Scripts\python -m pytest                        # 40 pruebas sin red ni clave de API
+.venv\Scripts\python -m pytest                        # 54 pruebas sin red ni clave de API
 .venv\Scripts\python scripts\make_samples.py          # regenera los ejemplos ficticios y el resultado esperado
 .venv\Scripts\python scripts\run_samples.py           # extracción real de los ejemplos + informe de precisión
-.venv\Scripts\python scripts\build_demo_assets.py     # ejemplos + grabación con Playwright + GIF/MP4 + capturas
+.venv\Scripts\python scripts\run_samples.py --rescore # vuelve a puntuar la ejecución guardada (sin API)
+.venv\Scripts\python scripts\build_demo_assets.py     # ejemplos + GIF/MP4 en vivo + capturas en modo replay
 ```
 
 En Linux/macOS, con el entorno activado: `pip install -r requirements-dev.txt`, `python -m playwright install chromium`, `pytest` y `python scripts/...`.
@@ -168,6 +169,7 @@ En Linux/macOS, con el entorno activado: `pip install -r requirements-dev.txt`, 
 - Es una demo, no un validador fiscal. No consulta la SEFAZ ni recalcula ICMS/IPI.
 - La extracción con un LLM puede equivocarse, sobre todo con fotos malas (la primera ejecución de arriba se equivocó en las claves de la NF-e). Por eso cada número pasa por las reglas de validación y la interfaz marca lo que requiere revisión humana.
 - Los documentos se envían a la API de Anthropic. Con datos reales, revise antes sus requisitos de tratamiento de datos.
+- Las claves de NF-e de un emisor con CNPJ alfanumérico siguen la NT 2025.001 según mi lectura (las letras valen su código ASCII − 48 en el dígito verificador, como en el propio CNPJ). Solo se probaron con claves sintéticas.
 
 ## Autor
 

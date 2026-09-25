@@ -6,7 +6,7 @@ requested as "44 digits, no spaces", and on both DANFEs the key the model return
 caught both: the NF-e key check failed. The key is now copied as printed, keeping the spaces
 between the 4-digit groups (see `app/schema.py`). The current results are in [accuracy.md](accuracy.md).
 
-Field-by-field comparison between the extraction and the ground truth written by `scripts/make_samples.py` (what is printed on each fictitious document).
+Field-by-field comparison between the extraction and the ground truth written by `scripts/make_samples.py` (what is printed on each fictitious document). Scored with the same normalisation that [accuracy.md](accuracy.md) describes (case, accents, ID punctuation and leading zeros ignored).
 
 | Sample | Model | Fields correct | Validation | Time (s) |
 |---|---|---|---|---|

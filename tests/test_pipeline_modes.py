@@ -88,6 +88,7 @@ def test_unknown_mode_is_rejected(isolated):
 def test_live_request_shape_through_the_real_sdk(monkeypatch):
     """Runs extract() through the real anthropic client (mock HTTP transport) to check
     the request body the SDK builds and that parsed_output comes back typed."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")  # checked by extract(); never sent anywhere
     truth = json.loads((SAMPLES / "truth" / "orden-compra-andina.json").read_text(encoding="utf-8"))
     doc = ExtractedDocument.model_validate({k: v for k, v in truth.items() if not k.startswith("_")})
     answer = WireDocument.from_document(doc).model_dump(mode="json")  # what Claude sends back
@@ -139,3 +140,66 @@ def test_wire_schema_round_trip_and_simplicity():
         raw = json.loads(truth_file.read_text(encoding="utf-8"))
         doc = ExtractedDocument.model_validate({k: v for k, v in raw.items() if not k.startswith("_")})
         assert WireDocument.from_document(doc).to_document() == doc
+
+
+# --- live mode without a key: clear message, CLI exit 2, JSON 401 --------------------
+
+@pytest.fixture
+def live_without_key(isolated, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    cfg = dataclasses.replace(isolated, mode="live")
+    monkeypatch.setattr(pipeline, "settings", cfg)
+    return cfg
+
+
+def test_cli_without_key_exits_2_with_a_clear_message(live_without_key, capsys):
+    import extract as cli
+
+    code = cli.main([str(SAMPLES / "orden-compra-andina.pdf")])
+    err = capsys.readouterr().err
+    assert code == 2
+    assert "ANTHROPIC_API_KEY is not set" in err and "Traceback" not in err
+    assert not live_without_key.runs_dir.exists()
+
+
+def test_api_without_key_answers_json_401(live_without_key):
+    from fastapi.testclient import TestClient
+
+    from app.server import app
+
+    name = "orden-compra-andina.pdf"
+    with TestClient(app) as client:
+        res = client.post("/api/extract", files={"file": (name, (SAMPLES / name).read_bytes(), "application/pdf")})
+    assert res.status_code == 401
+    assert res.headers["content-type"].startswith("application/json")
+    assert "ANTHROPIC_API_KEY is not set" in res.json()["error"]
+
+
+def test_api_unexpected_error_still_answers_json(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app import server
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("something unexpected")
+
+    monkeypatch.setattr(server, "process", boom)
+    name = "orden-compra-andina.pdf"
+    with TestClient(server.app, raise_server_exceptions=False) as client:
+        res = client.post("/api/extract", files={"file": (name, (SAMPLES / name).read_bytes(), "application/pdf")})
+        missing = client.get("/api/does-not-exist")
+    assert res.status_code == 500 and "RuntimeError" in res.json()["error"]
+    assert missing.status_code == 404 and "error" in missing.json()
+
+
+def test_user_file_outputs_are_not_labelled_fictitious(isolated, monkeypatch):
+    """A file that is not a bundled sample (other SHA-256) keeps DEMO but drops 'fictitious'."""
+    truth = json.loads((SAMPLES / "truth" / "orden-compra-andina.json").read_text(encoding="utf-8"))
+    doc = ExtractedDocument.model_validate({k: v for k, v in truth.items() if not k.startswith("_")})
+    monkeypatch.setattr(pipeline, "extract", lambda data, filename: extractor.ExtractionResult(
+        document=doc, model="fake", attempts=1, seconds=0.1, usage={}, stop_reason="end_turn"))
+    data = (SAMPLES / "orden-compra-andina.pdf").read_bytes() + b"\n% edited\n%%EOF\n"
+    result = pipeline.process(data, "mine.pdf", mode="live")
+    assert "fictitious" not in result["notice"] and "DEMO" in result["notice"]
+    sample = pipeline.process((SAMPLES / "orden-compra-andina.pdf").read_bytes(), "po.pdf", mode="live")
+    assert "fictitious" in sample["notice"]

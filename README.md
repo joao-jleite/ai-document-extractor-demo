@@ -6,7 +6,7 @@
 
 [Watch the MP4](docs/demo.mp4) · [Versión en español](README.es.md) · Python 3.12 · FastAPI · Claude API · Pydantic · openpyxl · reportlab
 
-The GIF and the screenshots were recorded from real Claude API calls (`claude-sonnet-5`). The wait for the model is fast-forwarded in the GIF, and a badge on screen shows the real duration.
+The GIF was recorded from a live Claude API call (`claude-sonnet-5`) on the photo sample. The wait for the model is fast-forwarded, and a badge on screen shows the real wait. It is a separate call from the run in the table below, so its time and token counts differ slightly (11.39 s, 8,566 / 1,025 tokens). The screenshots were taken in replay mode, so they show exactly the saved run in the table. "Reader notes" are the model's own free-text remarks: the UI shows them as information, and nothing validates them.
 
 ## Problem
 
@@ -22,15 +22,15 @@ Upload a PDF or a photo and get structured data back. On the three sample docume
    - sum of the lines = printed subtotal
    - subtotal − discount + freight + insurance + other charges + taxes = grand total
    - CNPJ check digits (including the 2026 **alphanumeric CNPJ**), CPF and Chilean **RUT**
-   - NF-e access key: mod-11 check digit, and the CNPJ, year/month and number inside it must match the document
+   - NF-e access key: mod-11 check digit, and the CNPJ, year/month and number inside it must match the document (keys of issuers with an alphanumeric CNPJ are accepted too)
    - dates, required fields, ISO 4217 currency (for example, CLP must have no decimals)
-3. **Export.** An **XLSX** file (sheets Header, Items and Validation), a **PDF report** and JSON, all marked DEMO.
+3. **Export.** An **XLSX** file (sheets Header, Items and Validation), a **PDF report** and JSON, all marked DEMO. Outputs of the bundled samples also say the data is fictitious; outputs of your own documents do not.
 
 The model is told to transcribe what is printed and never to "fix" a total, so validation can catch errors that are on the document itself. The photo sample has a deliberate typo: line 3 is printed as `427,50` instead of 25 × 18,90 = `472,50`. In the real run below, Claude transcribed the `427,50` as printed and the validation flagged it twice: once on the line and once on the subtotal.
 
 ## Results on the bundled samples
 
-One live run per sample on 2026-09-25, model `claude-sonnet-5`, effort `medium`. Each extraction is compared field by field with the ground truth (`samples/truth/`): 14 header fields, 4 fields per party (name, tax ID, ID type, country), the number of items and 6 fields per item. The full report is in [`examples/output/accuracy.md`](examples/output/accuracy.md), and the JSON, XLSX and PDF of each run are next to it.
+One live run per sample on 2026-09-25, model `claude-sonnet-5`, effort `medium`. Each extraction is compared field by field with the ground truth (`samples/truth/`): 14 header fields, 4 fields per party (name, tax ID, ID type, country), the number of items and 6 fields per item. Text is compared ignoring case and accents, and numbers and IDs ignoring punctuation and leading zeros (the exact rules are at the top of `accuracy.md`). A strict comparison with no normalisation, also in the report, gives the same counts on this run. The full report is in [`examples/output/accuracy.md`](examples/output/accuracy.md), and the JSON, XLSX and PDF of each run are next to it.
 
 | Sample | Fields correct | Validation result | Model call | Tokens (in / out) |
 |---|---|---|---|---|
@@ -63,11 +63,11 @@ These are three synthetic documents and one run each: they show the pipeline wor
 - **Web UI**: drag-and-drop upload or one-click samples, a processing view with a live timer, a summary card, the validation checklist, line items with mismatches highlighted, download buttons, and in-browser previews of the generated PDF and XLSX.
 - **CLI**: `python extract.py <file>` prints the extraction and the checks and writes the JSON, XLSX and PDF. Exit code `0` means OK, `1` means needs review, `2` means the file could not be processed.
 - **Robust input handling**: the file type is detected from the content, not the extension. Photos are rotated by EXIF, downscaled and stripped of metadata. Empty, truncated and oversized files are rejected before any API call. A failed run leaves no empty folder behind.
-- **Explicit retry policy**: one retry on a timeout, a network error, 429/5xx, or an invalid or truncated structured response. A bad API key or model name fails immediately with a clear message.
+- **Explicit retry policy**: one retry on a timeout, a network error, 408/429/5xx, or an invalid or truncated structured response. A missing or bad API key, a wrong model name, a refusal or any other 4xx error fails at once with a clear message: exit code 2 in the CLI, a JSON error in the web API.
 - **Two ways to try it without an API key** (bundled samples only, matched by SHA-256):
   - `replay` serves the results saved by the real run in `examples/output/`, labelled as a replay.
   - `offline` skips Claude and loads each sample's hand-written answer key from `samples/truth/`. The UI, the exports and the CLI say so on every output. It is there to try the validation and the exports; it says nothing about extraction quality.
-- **Tests**: 40 offline tests covering tax-ID algorithms, business rules, exporters, file checks, the retry policy (with a fake client), the three modes, and the request the SDK builds (mock HTTP transport).
+- **Tests**: 54 offline tests covering tax-ID algorithms, business rules, exporters, file checks, the retry policy (with a fake client), the three modes, the missing-key path (CLI and API), and the request the SDK builds (mock HTTP transport).
 
 ## Design note: two schemas
 
@@ -137,7 +137,7 @@ $env:EXTRACTOR_MODE = "replay"
 .venv\Scripts\python extract.py samples\foto-danfe-parafusos.jpg --offline
 ```
 
-Use `EXTRACTOR_MODE=offline` the same way for the answer-key mode. Both modes only accept the three bundled samples.
+Use `EXTRACTOR_MODE=offline` the same way for the answer-key mode. Both modes only accept the three bundled samples. If live mode runs without a key, the CLI stops with exit code 2 and the web page shows the same message, which points to these two modes.
 
 ### Configuration (`.env`)
 
@@ -155,10 +155,11 @@ Use `EXTRACTOR_MODE=offline` the same way for the answer-key mode. Both modes on
 ```bash
 pip install -r requirements-dev.txt
 python -m playwright install chromium   # once, for the demo recording (Playwright 1.58.0)
-pytest                                  # 40 offline tests, no API key needed
+pytest                                  # 54 offline tests, no API key needed
 python scripts/make_samples.py          # regenerate the fictitious samples + ground truth
 python scripts/run_samples.py           # real extraction of all samples + accuracy report
-python scripts/build_demo_assets.py     # samples + Playwright recording + GIF/MP4 + screenshots
+python scripts/run_samples.py --rescore # score the saved run again (no API call)
+python scripts/build_demo_assets.py     # samples + live GIF/MP4 + replay-mode screenshots
 ```
 
 On Windows without an activated venv, prefix each command with `.venv\Scripts\python -m` (for example `.venv\Scripts\python -m pytest`) or `.venv\Scripts\python` for the scripts.
@@ -188,6 +189,7 @@ tests/             pytest suite
 - This is a demo, not a fiscal validator. It does not query SEFAZ, and it does not recompute ICMS/IPI.
 - LLM extraction can be wrong, especially on poor photos (the first run above got the NF-e keys wrong). That is why every number goes through the validation rules and the UI marks what needs human review.
 - Documents are sent to the Anthropic API. For real data, check your data-processing requirements first.
+- NF-e keys of an issuer with an alphanumeric CNPJ follow NT 2025.001 as I read it (letters count as ASCII code − 48 in the check digit, like in the CNPJ itself). They are tested with synthetic keys only.
 
 ## About
 

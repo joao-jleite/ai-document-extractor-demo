@@ -13,6 +13,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .config import ROOT, settings
 from .extractor import ExtractionError, InvalidFileError
@@ -55,6 +56,7 @@ def health() -> dict:
         "mode": settings.mode,
         "model": settings.model,
         "api_key_configured": settings.api_key_configured,
+        "max_upload_mb": settings.max_upload_mb,
     }
 
 
@@ -124,9 +126,17 @@ def preview_xlsx(run_id: str) -> HTMLResponse:
     return HTMLResponse(render_xlsx_html(path, title=f"DEMO - {path.name}"))
 
 
-@app.exception_handler(HTTPException)
-async def http_error(_, exc: HTTPException) -> JSONResponse:
+# Every error answers JSON {"error": ...}, so the page can always show a readable message.
+@app.exception_handler(StarletteHTTPException)  # also covers FastAPI's HTTPException and unknown routes
+async def http_error(_, exc: StarletteHTTPException) -> JSONResponse:
     return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
+
+
+@app.exception_handler(Exception)
+async def unexpected_error(_, exc: Exception) -> JSONResponse:
+    # Starlette still re-raises the exception after this response, so uvicorn logs the traceback.
+    return JSONResponse({"error": f"Unexpected server error ({type(exc).__name__}). See the server log."},
+                        status_code=500)
 
 
 @app.get("/api/runs/{run_id}")
